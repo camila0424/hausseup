@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ciudadesEspana } from "../../data/locationData";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 
 type TipoContrato = "full_time" | "part_time" | "temporary" | "freelance" | "internship";
+
+interface City {
+    id: number;
+    name: string;
+    region: string;
+}
 
 interface FormAnuncio {
     titulo: string;
     sector: string;
     contrato: TipoContrato | "";
     provincia: string;
-    ciudad: string;
+    cityId: number | "";
     descripcion: string;
     vacantes: number;
 }
@@ -21,7 +26,7 @@ interface FormAnuncioErrors {
     sector?: string;
     contrato?: string;
     provincia?: string;
-    ciudad?: string;
+    cityId?: string;
     descripcion?: string;
     general?: string;
 }
@@ -45,7 +50,7 @@ const initialForm: FormAnuncio = {
     sector: "",
     contrato: "",
     provincia: "",
-    ciudad: "",
+    cityId: "",
     descripcion: "",
     vacantes: 1,
 };
@@ -56,9 +61,14 @@ function CreateJob() {
     const [form, setForm] = useState<FormAnuncio>(initialForm);
     const [errors, setErrors] = useState<FormAnuncioErrors>({});
     const [loading, setLoading] = useState(false);
+    const [cities, setCities] = useState<City[]>([]);
 
-    const ciudadesDisponibles =
-        ciudadesEspana.find((p) => p.provincia === form.provincia)?.ciudades ?? [];
+    useEffect(() => {
+        api.get<City[]>("/cities").then(setCities).catch(() => {});
+    }, []);
+
+    const regiones = [...new Set(cities.map((c) => c.region))].sort();
+    const ciudadesDisponibles = cities.filter((c) => c.region === form.provincia);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -66,8 +76,10 @@ function CreateJob() {
         const { name, value } = e.target;
         setForm((prev) => ({
             ...prev,
-            [name]: name === "vacantes" ? Number(value) : value,
-            ...(name === "provincia" ? { ciudad: "" } : {}),
+            [name]: name === "vacantes" ? Number(value)
+                  : name === "cityId" ? (value === "" ? "" : Number(value))
+                  : value,
+            ...(name === "provincia" ? { cityId: "" } : {}),
         }));
         setErrors((prev) => ({ ...prev, [name]: "", general: "" }));
     };
@@ -83,7 +95,7 @@ function CreateJob() {
         if (!form.sector) newErrors.sector = "Selecciona un sector";
         if (!form.contrato) newErrors.contrato = "Selecciona el tipo de contrato";
         if (!form.provincia) newErrors.provincia = "Selecciona una provincia";
-        if (!form.ciudad) newErrors.ciudad = "Selecciona una ciudad";
+        if (!form.cityId) newErrors.cityId = "Selecciona una ciudad";
         if (!form.descripcion.trim()) newErrors.descripcion = "La descripción es obligatoria";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -99,7 +111,7 @@ function CreateJob() {
                 titulo: form.titulo,
                 descripcion: form.descripcion,
                 contrato: form.contrato,
-                ciudad: form.ciudad,
+                cityId: form.cityId,
                 sector: form.sector,
                 vacantes: form.vacantes,
             });
@@ -223,10 +235,8 @@ function CreateJob() {
                                 className="w-full rounded-xl px-4 py-2.5 bg-[#182320] border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75] appearance-none"
                             >
                                 <option value="" className="bg-[#182320]">Selecciona provincia</option>
-                                {ciudadesEspana.map((p) => (
-                                    <option key={p.provincia} value={p.provincia} className="bg-[#182320]">
-                                        {p.provincia}
-                                    </option>
+                                {regiones.map((r) => (
+                                    <option key={r} value={r} className="bg-[#182320]">{r}</option>
                                 ))}
                             </select>
                             {errors.provincia && <p className="text-red-400 text-xs">{errors.provincia}</p>}
@@ -235,18 +245,18 @@ function CreateJob() {
                         <div className="flex flex-col gap-1">
                             <label className="text-sm text-[#1E1B4B] dark:text-white font-medium">Ciudad</label>
                             <select
-                                name="ciudad"
-                                value={form.ciudad}
+                                name="cityId"
+                                value={String(form.cityId)}
                                 onChange={handleChange}
                                 disabled={!form.provincia}
                                 className="w-full rounded-xl px-4 py-2.5 bg-[#182320] border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75] appearance-none disabled:opacity-40"
                             >
                                 <option value="" className="bg-[#182320]">Selecciona ciudad</option>
                                 {ciudadesDisponibles.map((c) => (
-                                    <option key={c} value={c} className="bg-[#182320]">{c}</option>
+                                    <option key={c.id} value={String(c.id)} className="bg-[#182320]">{c.name}</option>
                                 ))}
                             </select>
-                            {errors.ciudad && <p className="text-red-400 text-xs">{errors.ciudad}</p>}
+                            {errors.cityId && <p className="text-red-400 text-xs">{errors.cityId}</p>}
                         </div>
                     </div>
 

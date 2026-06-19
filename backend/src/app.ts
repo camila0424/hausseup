@@ -8,6 +8,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import usersRoutes from "./modules/users/users.routes";
 import jobsRoutes from "./modules/jobs/jobs.routes";
 import applicationsRoutes from "./modules/applications/applications.routes";
+import citiesRoutes from "./modules/cities/cities.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/applications", applicationsRoutes);
+app.use("/api/cities", citiesRoutes);
 
 // Health check
 app.get("/health", async (_req, res) => {

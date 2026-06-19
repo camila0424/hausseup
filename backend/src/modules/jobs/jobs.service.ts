@@ -19,7 +19,7 @@ interface CrearJobDTO {
   titulo: string;
   descripcion: string;
   contrato: "full_time" | "part_time" | "temporary" | "freelance" | "internship";
-  ciudad: string;
+  cityId: number;
   sector: string;
   vacantes?: number;
 }
@@ -91,8 +91,8 @@ export async function obtenerEmpleo(id: string) {
 
 export async function crearEmpleo(employerId: string, datos: CrearJobDTO) {
   const [ciudadRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM cities WHERE name = ?",
-    [datos.ciudad]
+    "SELECT id FROM cities WHERE id = ?",
+    [datos.cityId]
   );
 
   if (ciudadRows.length === 0) {
@@ -104,7 +104,7 @@ export async function crearEmpleo(employerId: string, datos: CrearJobDTO) {
     [datos.sector]
   );
 
-  const cityId = ciudadRows[0]?.id;
+  const cityId = datos.cityId;
   const sectorId = sectorRows[0]?.id ?? null;
 
   // Generar UUID manualmente igual que en auth
