@@ -108,6 +108,13 @@ export async function findOrCreateGoogleUser(
     userId = rows[0].id;
     nombre = rows[0].full_name;
     rol = rows[0].role;
+
+    // Si el usuario reentra pidiendo rol employer y aún no lo tiene, actualizarlo
+    if (defaultRole === "employer" && rol !== "employer") {
+      await pool.query("UPDATE users SET role = ? WHERE id = ?", ["employer", userId]);
+      rol = "employer";
+    }
+
     await pool.query("UPDATE users SET last_login_at = NOW() WHERE id = ?", [userId]);
   } else {
     const [uuidRow] = await pool.query<RowDataPacket[]>("SELECT UUID() as uuid");
