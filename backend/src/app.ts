@@ -1,8 +1,8 @@
 import express from "express";
 import cors from "cors";
 import session from "express-session";
-import dotenv from "dotenv";
 import pool from "./config/db";
+import { ENV } from "./config/env";
 import passport from "./config/passport";
 import authRoutes from "./modules/auth/auth.routes";
 import usersRoutes from "./modules/users/users.routes";
@@ -11,15 +11,13 @@ import applicationsRoutes from "./modules/applications/applications.routes";
 import citiesRoutes from "./modules/cities/cities.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT ?? 3001;
+const PORT = ENV.PORT;
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: ENV.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use(session({
-  secret: process.env.JWT_SECRET ?? "secreto",
+  secret: ENV.JWT_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: { secure: false, maxAge: 5 * 60 * 1000 },
@@ -48,5 +46,5 @@ app.get("/health", async (_req, res) => {
 app.use(errorMiddleware);
 
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });

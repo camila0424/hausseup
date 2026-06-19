@@ -1,15 +1,14 @@
 import pool from "../../config/db";
-import { RowDataPacket } from "mysql2";
 
-interface CityRow extends RowDataPacket {
+interface CityRow {
   id: number;
   name: string;
   region: string;
 }
 
 export async function obtenerCiudades() {
-  const [rows] = await pool.query<CityRow[]>(
+  const result = await pool.query(
     "SELECT id, name, region FROM cities WHERE is_active = TRUE ORDER BY region, name"
   );
-  return rows;
+  return result.rows as CityRow[];
 }

@@ -1,7 +1,6 @@
 import pool from "../../config/db";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-interface JobRow extends RowDataPacket {
+interface JobRow {
   id: string;
   titulo: string;
   descripcion: string;
@@ -46,28 +45,28 @@ export async function obtenerEmpleos(filtros: {
   const params: string[] = [];
 
   if (filtros.ciudad) {
-    query += " AND c.name = ?";
     params.push(filtros.ciudad);
+    query += ` AND c.name = $${params.length}`;
   }
 
   if (filtros.sector) {
-    query += " AND s.name = ?";
     params.push(filtros.sector);
+    query += ` AND s.name = $${params.length}`;
   }
 
   if (filtros.contrato) {
-    query += " AND j.contract_type = ?";
     params.push(filtros.contrato);
+    query += ` AND j.contract_type = $${params.length}`;
   }
 
   query += " ORDER BY j.created_at DESC LIMIT 50";
 
-  const [rows] = await pool.query<JobRow[]>(query, params);
-  return rows;
+  const result = await pool.query(query, params);
+  return result.rows as JobRow[];
 }
 
 export async function obtenerEmpleo(id: string) {
-  const [rows] = await pool.query<JobRow[]>(
+  const result = await pool.query(
     `SELECT j.id, j.title as titulo, j.description as descripcion,
             j.contract_type, j.vacancies, j.applications_count,
             j.status, j.created_at,
@@ -78,45 +77,41 @@ export async function obtenerEmpleo(id: string) {
      LEFT JOIN cities c ON j.city_id = c.id
      LEFT JOIN sectors s ON j.sector_id = s.id
      LEFT JOIN users u ON j.employer_id = u.id
-     WHERE j.id = ? AND j.status = 'active'`,
+     WHERE j.id = $1 AND j.status = 'active'`,
     [id]
   );
 
-  if (rows.length === 0) {
+  if (result.rows.length === 0) {
     throw { status: 404, message: "Empleo no encontrado" };
   }
 
-  return rows[0];
+  return result.rows[0] as JobRow;
 }
 
 export async function crearEmpleo(employerId: string, datos: CrearJobDTO) {
-  const [ciudadRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM cities WHERE id = ?",
+  const ciudadResult = await pool.query(
+    "SELECT id FROM cities WHERE id = $1",
     [datos.cityId]
   );
 
-  if (ciudadRows.length === 0) {
+  if (ciudadResult.rows.length === 0) {
     throw { status: 400, message: "Ciudad no encontrada" };
   }
 
-  const [sectorRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM sectors WHERE name = ?",
+  const sectorResult = await pool.query(
+    "SELECT id FROM sectors WHERE name = $1",
     [datos.sector]
   );
 
   const cityId = datos.cityId;
-  const sectorId = sectorRows[0]?.id ?? null;
+  const sectorId = sectorResult.rows[0]?.id ?? null;
 
-  // Generar UUID manualmente igual que en auth
-  const [uuidRow] = await pool.query<RowDataPacket[]>("SELECT UUID() as uuid");
-  const jobId = uuidRow[0]?.uuid as string;
-
-  await pool.query(
-    `INSERT INTO jobs 
-      (id, employer_id, city_id, sector_id, title, description, contract_type, vacancies, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+  const jobInsert = await pool.query(
+    `INSERT INTO jobs
+      (employer_id, city_id, sector_id, title, description, contract_type, vacancies, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
+     RETURNING id`,
     [
-      jobId,
       employerId,
       cityId,
       sectorId,
@@ -127,11 +122,11 @@ export async function crearEmpleo(employerId: string, datos: CrearJobDTO) {
     ]
   );
 
-  return { id: jobId, mensaje: "Empleo creado correctamente" };
+  return { id: jobInsert.rows[0].id as string, mensaje: "Empleo creado correctamente" };
 }
 
 export async function obtenerEmpleosDeEmpleador(employerId: string) {
-  const [rows] = await pool.query<JobRow[]>(
+  const result = await pool.query(
     `SELECT j.id, j.title as titulo, j.description as descripcion,
             j.contract_type, j.vacancies, j.applications_count,
             j.status, j.created_at,
@@ -140,10 +135,10 @@ export async function obtenerEmpleosDeEmpleador(employerId: string) {
      FROM jobs j
      LEFT JOIN cities c ON j.city_id = c.id
      LEFT JOIN sectors s ON j.sector_id = s.id
-     WHERE j.employer_id = ?
+     WHERE j.employer_id = $1
      ORDER BY j.created_at DESC`,
     [employerId]
   );
 
-  return rows;
+  return result.rows as JobRow[];
 }

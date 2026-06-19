@@ -2,7 +2,6 @@ import pool from "../../config/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ENV } from "../../config/env";
-import { RowDataPacket } from "mysql2";
 
 interface RegistroDTO {
   nombre: string;
@@ -20,7 +19,7 @@ interface LoginDTO {
   contrasena: string;
 }
 
-interface UserRow extends RowDataPacket {
+interface UserRow {
   id: string;
   full_name: string;
   email: string;
@@ -29,27 +28,23 @@ interface UserRow extends RowDataPacket {
 }
 
 export async function registrarUsuario(datos: RegistroDTO) {
-  const [existe] = await pool.query<UserRow[]>(
-    "SELECT id FROM users WHERE email = ?",
+  const existe = await pool.query(
+    "SELECT id FROM users WHERE email = $1",
     [datos.correo]
   );
 
-  if (existe.length > 0) {
+  if (existe.rows.length > 0) {
     throw { status: 409, message: "El correo ya está registrado" };
   }
 
   const passwordHash = await bcrypt.hash(datos.contrasena, 12);
 
-  // Generar UUID manualmente
-  const [uuidRow] = await pool.query<RowDataPacket[]>("SELECT UUID() as uuid");
-  const userId = uuidRow[0]?.uuid as string;
-
-  await pool.query(
-    `INSERT INTO users 
-      (id, email, password_hash, full_name, phone_whatsapp, role, is_active) 
-     VALUES (?, ?, ?, ?, ?, ?, true)`,
+  const insertResult = await pool.query(
+    `INSERT INTO users
+      (email, password_hash, full_name, phone_whatsapp, role, is_active)
+     VALUES ($1, $2, $3, $4, $5, true)
+     RETURNING id`,
     [
-      userId,
       datos.correo,
       passwordHash,
       datos.nombre,
@@ -58,10 +53,11 @@ export async function registrarUsuario(datos: RegistroDTO) {
     ]
   );
 
-  // Guardar documento con el UUID correcto
+  const userId = insertResult.rows[0].id as string;
+
   await pool.query(
-    `INSERT INTO user_documents (user_id, doc_type, doc_number, status) 
-     VALUES (?, 'NIE', ?, 'pending')`,
+    `INSERT INTO user_documents (user_id, doc_type, doc_number, status)
+     VALUES ($1, 'NIE', $2, 'pending')`,
     [userId, datos.documento]
   );
 
@@ -95,10 +91,11 @@ export async function findOrCreateGoogleUser(
   const email = profile.emails?.[0]?.value;
   if (!email) throw { status: 400, message: "No se pudo obtener el correo de Google" };
 
-  const [rows] = await pool.query<UserRow[]>(
-    "SELECT id, full_name, email, role FROM users WHERE email = ? AND is_active = true",
+  const queryResult = await pool.query(
+    "SELECT id, full_name, email, role FROM users WHERE email = $1 AND is_active = true",
     [email]
   );
+  const rows = queryResult.rows as UserRow[];
 
   let userId: string;
   let nombre: string;
@@ -109,24 +106,23 @@ export async function findOrCreateGoogleUser(
     nombre = rows[0].full_name;
     rol = rows[0].role;
 
-    // Si el usuario reentra pidiendo rol employer y aún no lo tiene, actualizarlo
     if (defaultRole === "employer" && rol !== "employer") {
-      await pool.query("UPDATE users SET role = ? WHERE id = ?", ["employer", userId]);
+      await pool.query("UPDATE users SET role = $1 WHERE id = $2", ["employer", userId]);
       rol = "employer";
     }
 
-    await pool.query("UPDATE users SET last_login_at = NOW() WHERE id = ?", [userId]);
+    await pool.query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [userId]);
   } else {
-    const [uuidRow] = await pool.query<RowDataPacket[]>("SELECT UUID() as uuid");
-    userId = uuidRow[0]?.uuid as string;
     nombre = profile.displayName;
     rol = defaultRole;
 
-    await pool.query(
-      `INSERT INTO users (id, email, password_hash, full_name, role, is_active)
-       VALUES (?, ?, '', ?, ?, true)`,
-      [userId, email, nombre, rol]
+    const googleInsert = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, role, is_active)
+       VALUES ($1, '', $2, $3, true)
+       RETURNING id`,
+      [email, nombre, rol]
     );
+    userId = googleInsert.rows[0].id as string;
   }
 
   const token = jwt.sign(
@@ -139,10 +135,11 @@ export async function findOrCreateGoogleUser(
 }
 
 export async function loginUsuario(datos: LoginDTO) {
-  const [rows] = await pool.query<UserRow[]>(
-    "SELECT id, full_name, email, password_hash, role FROM users WHERE email = ? AND is_active = true",
+  const loginResult = await pool.query(
+    "SELECT id, full_name, email, password_hash, role FROM users WHERE email = $1 AND is_active = true",
     [datos.correo]
   );
+  const rows = loginResult.rows as UserRow[];
 
   if (rows.length === 0) {
     throw { status: 401, message: "Credenciales incorrectas" };
@@ -160,15 +157,15 @@ export async function loginUsuario(datos: LoginDTO) {
   }
 
   await pool.query(
-    "UPDATE users SET last_login_at = NOW() WHERE id = ?",
+    "UPDATE users SET last_login_at = NOW() WHERE id = $1",
     [usuario.id]
   );
 
-const token = jwt.sign(
-  { id: usuario.id, role: usuario.role },
-  ENV.JWT_SECRET as string,
-  { expiresIn: ENV.JWT_EXPIRES_IN as unknown as number }
-);
+  const token = jwt.sign(
+    { id: usuario.id, role: usuario.role },
+    ENV.JWT_SECRET as string,
+    { expiresIn: ENV.JWT_EXPIRES_IN as unknown as number }
+  );
 
   return {
     token,
