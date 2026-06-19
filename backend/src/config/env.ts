@@ -13,11 +13,7 @@ function optional(name: string, fallback: string): string {
 
 export const ENV = {
   PORT: optional("PORT", "3001"),
-  DB_HOST: optional("DB_HOST", "localhost"),
-  DB_PORT: Number(optional("DB_PORT", "3306")),
-  DB_USER: optional("DB_USER", "root"),
-  DB_PASSWORD: optional("DB_PASSWORD", ""),
-  DB_NAME: optional("DB_NAME", "raices_db"),
+  DATABASE_URL: required("DATABASE_URL"),
   JWT_SECRET: optional("JWT_SECRET", "secreto"),
   JWT_EXPIRES_IN: optional("JWT_EXPIRES_IN", "7d"),
   GOOGLE_CLIENT_ID: required("GOOGLE_CLIENT_ID"),
