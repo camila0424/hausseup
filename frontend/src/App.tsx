@@ -23,10 +23,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function App() {
+function AppContent() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(
     !localStorage.getItem("hausseup_privacy_accepted")
   );
+  const location = useLocation();
 
   const handlePrivacyAccept = () => {
     localStorage.setItem("hausseup_privacy_accepted", "true");
@@ -35,8 +36,9 @@ function App() {
 
   return (
     <>
-      {showPrivacyModal && <PrivacyModal onAccept={handlePrivacyAccept} />}
-      <BrowserRouter>
+      {showPrivacyModal && location.pathname !== "/privacidad" && (
+        <PrivacyModal onAccept={handlePrivacyAccept} />
+      )}
       <Routes>
 
         {/* Páginas públicas — con Header público y Footer */}
@@ -119,8 +121,15 @@ function App() {
         />
 
       </Routes>
-    </BrowserRouter>
     </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
