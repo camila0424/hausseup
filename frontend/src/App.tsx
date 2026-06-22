@@ -10,6 +10,7 @@ import WorkerSearch from "./pages/worker/WorkerSearch";
 import EmployerDashboard from "./pages/employer/EmployerDashboard";
 import CreateJob from "./pages/employer/CreateJob";
 import AuthCallback from "./pages/auth/AuthCallback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { useAuth } from "./context/AuthContext";
 import "./styles/App.css";
 
@@ -67,6 +68,10 @@ function App() {
           }
         />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/privacidad"
+          element={<PrivacyPolicy />}
+        />
 
         {/* Páginas autenticadas — con Header con cerrar sesión y Footer */}
         <Route

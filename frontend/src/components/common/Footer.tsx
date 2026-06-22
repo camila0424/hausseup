@@ -1,4 +1,5 @@
 import { Play, Mail, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function Footer() {
     return (
@@ -74,7 +75,7 @@ function Footer() {
             <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs" style={{ color: "rgba(255,255,255,0.30)" }}>
                 <p>© {new Date().getFullYear()} Hausseup. Todos los derechos reservados.</p>
                 <div className="flex gap-6">
-                    <a href="#" className="hover:text-white transition">Privacidad</a>
+                    <Link to="/privacidad" className="hover:text-white transition">Política de privacidad</Link>
                     <a href="#" className="hover:text-white transition">Términos</a>
                 </div>
             </div>
