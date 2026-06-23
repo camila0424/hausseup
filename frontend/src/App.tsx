@@ -11,6 +11,8 @@ import UserIntent from "./pages/selection/UserIntent";
 import WorkerSearch from "./pages/worker/WorkerSearch";
 import EmployerDashboard from "./pages/employer/EmployerDashboard";
 import CreateJob from "./pages/employer/CreateJob";
+import CompanionFeed from "./features/agent/CompanionFeed";
+import RecruiterFeed from "./features/agent/RecruiterFeed";
 import AuthCallback from "./pages/auth/AuthCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PrivacyModal from "./components/common/PrivacyModal";
@@ -18,7 +20,7 @@ import { useAuth } from "./context/AuthContext";
 import "./styles/App.css";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, usuario } = useAuth();
   const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   return <>{children}</>;
@@ -125,6 +127,14 @@ function AppContent() {
               <AuthLayout>
                 <CreateJob />
               </AuthLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/agente"
+          element={
+            <ProtectedRoute>
+              {usuario?.rol === 'employer' ? <RecruiterFeed /> : <CompanionFeed />}
             </ProtectedRoute>
           }
         />
