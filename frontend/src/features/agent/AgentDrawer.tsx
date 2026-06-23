@@ -10,7 +10,6 @@ interface AgentDrawerProps {
 function AgentDrawer({ open, onClose, onQuickMessage }: AgentDrawerProps) {
   const navigate = useNavigate();
   const { usuario, logout } = useAuth();
-  const role = usuario?.rol;
 
   function handleLogout() {
     logout();
@@ -91,14 +90,14 @@ function AgentDrawer({ open, onClose, onQuickMessage }: AgentDrawerProps) {
 
         {/* opciones de navegación */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px' }}>
-          {role === 'worker' && (
+          {usuario?.rol === 'worker' && (
             <DrawerItem
               label="Mis candidaturas"
               icon="📋"
               onClick={() => { onClose(); onQuickMessage('Muéstrame mis candidaturas'); }}
             />
           )}
-          {role === 'employer' && (
+          {usuario?.rol === 'employer' && (
             <DrawerItem
               label="Mis anuncios"
               icon="💼"
