@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:3001/api";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
 function getToken(): string | null {
   return localStorage.getItem("token");
@@ -32,7 +32,7 @@ async function request<T>(
       localStorage.removeItem("usuario");
       window.location.href = "/login";
     }
-    throw new Error(data.mensaje ?? "Error en la solicitud");
+    throw new Error(data.mensaje ?? "No se pudo conectar. Intenta de nuevo.");
   }
 
   return data as T;
