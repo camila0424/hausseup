@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JobCardData, CandidateCardData } from '../../types/agent';
 import { useAgentChat } from './useAgentChat';
 import MessageBubble from './MessageBubble';
 import JobCard from './JobCard';
 import CandidateCard from './CandidateCard';
 import ActionConfirmModal from './ActionConfirmModal';
+import AgentDrawer from './AgentDrawer';
 
 // pantalla del empleador: /agente (cuando el rol es 'employer')
 // misma estructura que CompanionFeed pero con header diferente y mensaje de bienvenida distinto
@@ -19,7 +20,14 @@ function RecruiterFeed() {
     setInputValue,
   } = useAgentChat();
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // el agente habla primero al montar
+  useEffect(() => {
+    sendMessage('__init__');
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,6 +65,7 @@ function RecruiterFeed() {
         }}
       >
         <button
+          onClick={() => setDrawerOpen(true)}
           style={{
             background: 'none',
             border: 'none',
@@ -271,6 +280,8 @@ function RecruiterFeed() {
           onCancel={() => confirmAction(false)}
         />
       )}
+
+      <AgentDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       <style>{`
         @keyframes pulse {

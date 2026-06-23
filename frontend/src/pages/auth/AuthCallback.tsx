@@ -19,9 +19,7 @@ function AuthCallback() {
                 login(token, { id, nombre, correo, rol });
 
                 setTimeout(() => {
-                    window.location.href = rol === "employer"
-                        ? "/dashboard-empleador"
-                        : "/busco-empleo";
+                    window.location.href = "/agente";
                 }, 100);
             } catch {
                 window.location.href = "/login?error=google";

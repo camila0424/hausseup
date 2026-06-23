@@ -102,12 +102,7 @@ function RegisterManual() {
             });
 
             login(response.token, response.usuario);
-
-            if (response.usuario.rol === "employer") {
-                navigate("/dashboard-empleador");
-            } else {
-                navigate("/busco-empleo");
-            }
+            navigate("/agente");
         } catch (error) {
             setErrors({ general: (error as Error).message });
         } finally {

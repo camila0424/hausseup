@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JobCardData, CandidateCardData } from '../../types/agent';
 import { useAgentChat } from './useAgentChat';
 import MessageBubble from './MessageBubble';
 import JobCard from './JobCard';
 import CandidateCard from './CandidateCard';
 import ActionConfirmModal from './ActionConfirmModal';
+import AgentDrawer from './AgentDrawer';
 
 // pantalla principal del candidato: /agente
 // estructura fija: header 60px + thread scrollable + input 80px
@@ -19,8 +20,15 @@ function CompanionFeed() {
     setInputValue,
   } = useAgentChat();
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   // referencia al final del hilo para hacer scroll automático
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // el agente habla primero al montar
+  useEffect(() => {
+    sendMessage('__init__');
+  }, []);
 
   // hacer scroll al último mensaje cada vez que llega uno nuevo
   useEffect(() => {
@@ -59,8 +67,8 @@ function CompanionFeed() {
           boxShadow: '0 2px 8px rgba(31,42,68,0.15)',
         }}
       >
-        {/* botón de menú (placeholder — conectar con drawer de candidaturas) */}
         <button
+          onClick={() => setDrawerOpen(true)}
           style={{
             background: 'none',
             border: 'none',
@@ -297,6 +305,8 @@ function CompanionFeed() {
           onCancel={() => confirmAction(false)}
         />
       )}
+
+      <AgentDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {/* estilos de animación de los puntos pulsantes */}
       <style>{`
