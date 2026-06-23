@@ -4,13 +4,13 @@ import pool from '../config/db';
 
 // obtiene el historial reciente formateado para inyectar en el system prompt
 export async function getRecentHistoryText(
-  userId: number,
+  userId: string,
   limit = 20
 ): Promise<string> {
   // buscar la conversación de tipo 'agent' más reciente del usuario
   const { rows: convRows } = await pool.query(
     `SELECT id FROM conversations
-     WHERE user_id = $1 AND conversation_type = 'agent'
+     WHERE (user_a_id = $1 OR user_b_id = $1) AND conversation_type = 'agent'
      ORDER BY updated_at DESC LIMIT 1`,
     [userId]
   );
@@ -36,12 +36,12 @@ export async function getRecentHistoryText(
 
 // obtiene el historial en formato Anthropic messages para el loop del agente
 export async function getConversationMessages(
-  userId: number,
+  userId: string,
   limit = 20
 ): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
   const { rows: convRows } = await pool.query(
     `SELECT id FROM conversations
-     WHERE user_id = $1 AND conversation_type = 'agent'
+     WHERE (user_a_id = $1 OR user_b_id = $1) AND conversation_type = 'agent'
      ORDER BY updated_at DESC LIMIT 1`,
     [userId]
   );
@@ -67,14 +67,14 @@ export async function getConversationMessages(
 
 // guarda un turno de la conversación (mensaje del usuario + respuesta del agente)
 export async function saveConversationTurn(
-  userId: number,
+  userId: string,
   userMessage: string,
   agentResponse: string
 ): Promise<void> {
   // buscar o crear la conversación de tipo 'agent'
   let { rows: convRows } = await pool.query(
     `SELECT id FROM conversations
-     WHERE user_id = $1 AND conversation_type = 'agent'
+     WHERE (user_a_id = $1 OR user_b_id = $1) AND conversation_type = 'agent'
      ORDER BY updated_at DESC LIMIT 1`,
     [userId]
   );
@@ -83,7 +83,7 @@ export async function saveConversationTurn(
 
   if (convRows.length === 0) {
     const { rows: newConv } = await pool.query(
-      `INSERT INTO conversations (user_id, conversation_type, created_at, updated_at)
+      `INSERT INTO conversations (user_a_id, conversation_type, created_at, updated_at)
        VALUES ($1, 'agent', NOW(), NOW())
        RETURNING id`,
       [userId]
@@ -116,7 +116,7 @@ export async function saveConversationTurn(
 // ─── MEMORIA COMPACTADA ───────────────────────────────────────────────────────
 
 // obtiene toda la memoria del usuario como texto para inyectar en el system prompt
-export async function getUserMemoryText(userId: number): Promise<string> {
+export async function getUserMemoryText(userId: string): Promise<string> {
   const { rows } = await pool.query(
     'SELECT memory_key, memory_value FROM agent_user_memory WHERE user_id = $1',
     [userId]
@@ -138,7 +138,7 @@ export async function getUserMemoryText(userId: number): Promise<string> {
 
 // guarda un par clave-valor en la memoria del usuario
 export async function setUserMemory(
-  userId: number,
+  userId: string,
   key: string,
   value: unknown
 ): Promise<void> {

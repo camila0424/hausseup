@@ -22,7 +22,7 @@ const MAX_ITERATIONS = 5;
 
 export async function runAgentLoop(
   userMessage: string,
-  userId: number,
+  userId: string,
   agentType: AgentType
 ): Promise<AgentResponse> {
   // preparar contexto: memoria y herramientas según el tipo de agente
@@ -158,7 +158,7 @@ export async function runAgentLoop(
 export async function confirmAgentAction(
   pendingActionId: string,
   confirmed: boolean,
-  userId: number
+  userId: string
 ): Promise<{ success: boolean; message: string }> {
   const action = pendingActionsMap.get(pendingActionId);
 

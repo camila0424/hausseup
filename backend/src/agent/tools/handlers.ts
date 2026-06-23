@@ -22,7 +22,7 @@ setInterval(() => {
 export async function executeTool(
   toolName: string,
   toolInput: Record<string, unknown>,
-  userId: number,
+  userId: string,
   agentType: 'companion' | 'recruiter'
 ): Promise<unknown> {
   switch (toolName) {
@@ -71,7 +71,7 @@ export async function executeTool(
 
 async function handleBuscarEmpleos(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   const limit = (input.limit as number) || 3;
 
@@ -163,7 +163,7 @@ async function handleBuscarEmpleos(
   return { jobs: validJobs, total: validJobs.length };
 }
 
-async function handleObtenerPerfil(userId: number): Promise<unknown> {
+async function handleObtenerPerfil(userId: string): Promise<unknown> {
   const { rows } = await pool.query(
     `SELECT id, name, email, phone, city, migration_status,
             sector, experience_summary, languages, salary_expectation,
@@ -176,7 +176,7 @@ async function handleObtenerPerfil(userId: number): Promise<unknown> {
 
 async function handleActualizarPerfil(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   // construir SET dinámico solo con los campos que vienen
   const fieldMap: Record<string, string> = {
@@ -224,7 +224,7 @@ async function handleActualizarPerfil(
 
 async function handleAplicarAEmpleo(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   // esta tool NO ejecuta la candidatura directamente
   // crea una acción pendiente que el frontend debe confirmar (HITL)
@@ -254,7 +254,7 @@ async function handleAplicarAEmpleo(
 // ejecuta la candidatura real después de que el usuario confirme en el modal
 export async function executeConfirmedAction(
   action: PendingAction,
-  userId: number
+  userId: string
 ): Promise<{ success: boolean; message: string }> {
   switch (action.type) {
     case 'apply_to_job': {
@@ -296,7 +296,7 @@ export async function executeConfirmedAction(
   }
 }
 
-async function handleMisCandidaturas(userId: number): Promise<unknown> {
+async function handleMisCandidaturas(userId: string): Promise<unknown> {
   const { rows } = await pool.query(
     `SELECT a.id, a.status, a.created_at,
             j.title, j.company_name, j.location
@@ -312,7 +312,7 @@ async function handleMisCandidaturas(userId: number): Promise<unknown> {
 
 async function handleGuardarEmpleo(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   const jobId = input.jobId as number;
 
@@ -336,7 +336,7 @@ async function handleGuardarEmpleo(
 
 async function handleCrearOfertaEmpleo(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   // igual que aplicar_a_empleo, requiere confirmación antes de publicar
   // primero buscamos el employer_id asociado al usuario
@@ -399,7 +399,7 @@ async function handleCrearOfertaEmpleo(
 
 async function handleRecomendarCandidatos(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   const jobId = input.jobId as number;
   const limit = (input.limit as number) || 5;
@@ -494,7 +494,7 @@ async function handleRecomendarCandidatos(
 
 async function handleProgramarEntrevista(
   input: Record<string, unknown>,
-  userId: number
+  userId: string
 ): Promise<unknown> {
   // insertar la entrevista — ajustar tabla según esquema real
   const { rows } = await pool.query(
@@ -522,7 +522,7 @@ async function handleProgramarEntrevista(
 
 async function handleLogAuditEvent(
   input: Record<string, unknown>,
-  userId: number,
+  userId: string,
   agentType: 'companion' | 'recruiter'
 ): Promise<unknown> {
   await pool.query(

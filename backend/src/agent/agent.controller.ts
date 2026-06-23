@@ -27,8 +27,7 @@ export async function handleAgentMessage(req: AuthRequest, res: Response): Promi
     // worker → Agente Compañero, employer → Agente de Selección
     const agentType = userRole === 'employer' ? 'recruiter' : 'companion';
 
-    // userId viene como string del JWT, las funciones esperan number
-    const response = await runAgentLoop(message.trim(), Number(userId), agentType);
+    const response = await runAgentLoop(message.trim(), userId, agentType);
 
     res.json({
       success: true,
@@ -63,8 +62,7 @@ export async function handleConfirmAction(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // userId viene como string del JWT, las funciones esperan number
-    const result = await confirmAgentAction(pendingActionId, confirmed, Number(userId));
+    const result = await confirmAgentAction(pendingActionId, confirmed, userId);
 
     res.json({
       success: result.success,
