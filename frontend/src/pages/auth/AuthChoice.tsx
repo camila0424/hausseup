@@ -1,7 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
 
-const BACKEND_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
-
 function AuthChoice() {
     const navigate = useNavigate();
 
@@ -50,24 +48,6 @@ function AuthChoice() {
                         </div>
                     </button>
                 </div>
-
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="flex-1 h-px bg-[#E8D9C4]" />
-                    <span className="text-[#6B7280] text-xs">o regístrate con</span>
-                    <div className="flex-1 h-px bg-[#E8D9C4]" />
-                </div>
-
-                <a
-                    href={`${BACKEND_URL}/auth/google`}
-                    className="flex items-center justify-center gap-3 w-full py-3 rounded-xl bg-white text-gray-800 font-semibold text-sm border border-[#E8D9C4] hover:bg-[#EDE1CE] transition"
-                >
-                    <img
-                        src="https://www.svgrepo.com/show/475656/google-color.svg"
-                        alt="Google"
-                        className="w-5 h-5"
-                    />
-                    Continuar con Google
-                </a>
 
                 <p className="text-center text-[#6B7280] text-xs mt-6">
                     ¿Ya tienes cuenta?{" "}
