@@ -4,6 +4,7 @@ import Layout from "./components/common/Layout";
 import AuthLayout from "./components/common/AuthLayout";
 import LandingPage from "./pages/LandingPage";
 import AuthChoice from "./pages/auth/AuthChoice";
+import RegisterOptions from "./pages/auth/RegisterOptions";
 import RegisterManual from "./pages/auth/RegisterManual";
 import LoginPage from "./pages/auth/LoginPage";
 import UserIntent from "./pages/selection/UserIntent";
@@ -55,6 +56,14 @@ function AppContent() {
           element={
             <Layout>
               <AuthChoice />
+            </Layout>
+          }
+        />
+        <Route
+          path="/registro/opciones"
+          element={
+            <Layout>
+              <RegisterOptions />
             </Layout>
           }
         />

@@ -23,7 +23,7 @@ function AuthChoice() {
 
                 <div className="flex flex-col gap-3 mb-6">
                     <button
-                        onClick={() => navigate("/registro/manual?tipo=worker")}
+                        onClick={() => navigate("/registro/opciones?tipo=worker")}
                         className="w-full p-5 rounded-xl border-2 border-[#E8D9C4] text-left hover:border-[#C1502E] hover:bg-[#C1502E]/5 transition-all duration-200"
                     >
                         <div className="flex items-center gap-4">
@@ -36,7 +36,7 @@ function AuthChoice() {
                     </button>
 
                     <button
-                        onClick={() => navigate("/registro/manual?tipo=employer")}
+                        onClick={() => navigate("/registro/opciones?tipo=employer")}
                         className="w-full p-5 rounded-xl border-2 border-[#E8D9C4] text-left hover:border-[#C1502E] hover:bg-[#C1502E]/5 transition-all duration-200"
                     >
                         <div className="flex items-center gap-4">

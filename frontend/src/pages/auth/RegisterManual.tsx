@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { ciudadesEspana } from "../../data/locationData";
 import { api } from "../../services/api";
@@ -12,7 +12,6 @@ interface FormState {
     provincia: string;
     ciudad: string;
     documento: string;
-    tipoUsuario: "worker" | "employer" | "";
 }
 
 interface FormErrors {
@@ -23,7 +22,6 @@ interface FormErrors {
     provincia?: string;
     ciudad?: string;
     documento?: string;
-    tipoUsuario?: string;
     general?: string;
 }
 
@@ -35,23 +33,25 @@ const initialForm: FormState = {
     provincia: "",
     ciudad: "",
     documento: "",
-    tipoUsuario: "",
 };
 
 function RegisterManual() {
     const navigate = useNavigate();
     const { login } = useAuth();
     const [params] = useSearchParams();
-    const tipo = params.get("tipo");
-    const [form, setForm] = useState<FormState>({
-        ...initialForm,
-        tipoUsuario: tipo === "employer" ? "employer" : tipo === "worker" ? "worker" : "",
-    });
+    const tipo = params.get("tipo") as "worker" | "employer" | null;
+    const [form, setForm] = useState<FormState>(initialForm);
     const [errors, setErrors] = useState<FormErrors>({});
     const [loading, setLoading] = useState(false);
     const [privacyChecked, setPrivacyChecked] = useState(
         !!localStorage.getItem("hausseup_privacy_accepted")
     );
+
+    useEffect(() => {
+        if (tipo !== "worker" && tipo !== "employer") {
+            navigate("/registro", { replace: true });
+        }
+    }, [tipo, navigate]);
 
     const ciudadesDisponibles =
         ciudadesEspana.find((p) => p.provincia === form.provincia)?.ciudades ?? [];
@@ -77,7 +77,6 @@ function RegisterManual() {
         if (!form.provincia) newErrors.provincia = "Selecciona una provincia";
         if (!form.ciudad) newErrors.ciudad = "Selecciona una ciudad";
         if (!form.documento.trim()) newErrors.documento = "El documento es obligatorio";
-        if (!form.tipoUsuario) newErrors.tipoUsuario = "Selecciona una opción";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -99,7 +98,7 @@ function RegisterManual() {
                 provincia: form.provincia,
                 ciudad: form.ciudad,
                 documento: form.documento,
-                tipoUsuario: form.tipoUsuario,
+                tipoUsuario: tipo,
             });
 
             login(response.token, response.usuario);
@@ -247,41 +246,6 @@ function RegisterManual() {
                             className="w-full rounded-xl px-4 py-2.5 bg-white border border-[#E8D9C4] text-[#1F2A44] placeholder-[#9CA3AF] text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A33D]"
                         />
                         {errors.documento && <p className="text-red-400 text-xs">{errors.documento}</p>}
-                    </div>
-
-                    {/* Busco / Ofrezco */}
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm text-[#1F2A44] font-medium">¿Qué buscas?</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setForm((prev) => ({ ...prev, tipoUsuario: "worker" }))}
-                                className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.tipoUsuario === "worker"
-                                    ? "border-[#C1502E] bg-[#C1502E]/10"
-                                    : "border-[#E8D9C4] hover:border-[#C1502E]/50"
-                                    }`}
-                            >
-                                <p className={`text-sm font-semibold ${form.tipoUsuario === "worker" ? "text-[#C1502E]" : "text-[#1F2A44]"}`}>
-                                    🔍 Busco empleo
-                                </p>
-                                <p className="text-[#6B7280] text-xs mt-0.5">Quiero trabajar</p>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setForm((prev) => ({ ...prev, tipoUsuario: "employer" }))}
-                                className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.tipoUsuario === "employer"
-                                    ? "border-[#C1502E] bg-[#C1502E]/10"
-                                    : "border-[#E8D9C4] hover:border-[#C1502E]/50"
-                                    }`}
-                            >
-                                <p className={`text-sm font-semibold ${form.tipoUsuario === "employer" ? "text-[#C1502E]" : "text-[#1F2A44]"}`}>
-                                    📋 Ofrezco empleo
-                                </p>
-                                <p className="text-[#6B7280] text-xs mt-0.5">Quiero contratar</p>
-                            </button>
-                        </div>
-                        {errors.tipoUsuario && <p className="text-red-400 text-xs">{errors.tipoUsuario}</p>}
                     </div>
 
                     {/* Aceptación de política de privacidad */}
