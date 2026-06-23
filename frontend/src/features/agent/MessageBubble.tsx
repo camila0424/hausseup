@@ -29,13 +29,14 @@ function MessageBubble({ role, content }: MessageBubbleProps) {
           boxShadow: '0 1px 3px rgba(31,42,68,0.08), 0 4px 12px rgba(31,42,68,0.04)',
         }}
       >
-        {/* dividir por saltos de línea para respetar el formato */}
-        {content.split('\n').map((line, i) => (
-          <span key={i}>
-            {line}
-            {i < content.split('\n').length - 1 && <br />}
-          </span>
-        ))}
+        <span
+          dangerouslySetInnerHTML={{
+            __html: content
+              .split('\n')
+              .map((line) => line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))
+              .join('<br />'),
+          }}
+        />
       </div>
     </div>
   );

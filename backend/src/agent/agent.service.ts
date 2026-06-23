@@ -5,6 +5,7 @@ import { RECRUITER_TOOLS } from './tools/recruiter.tools';
 import { executeTool, executeConfirmedAction, pendingActionsMap } from './tools/handlers';
 import { buildCompanionPrompt } from './prompts/companion.prompt';
 import { buildRecruiterPrompt } from './prompts/recruiter.prompt';
+import pool from '../config/db';
 import {
   getConversationMessages,
   getUserMemoryText,
@@ -25,16 +26,19 @@ export async function runAgentLoop(
   userId: string,
   agentType: AgentType
 ): Promise<AgentResponse> {
-  // preparar contexto: memoria y herramientas según el tipo de agente
-  const [userMemory, recentHistoryText, historyMessages] = await Promise.all([
+  // preparar contexto: memoria, herramientas y nombre del usuario
+  const [userMemory, recentHistoryText, historyMessages, userRow] = await Promise.all([
     getUserMemoryText(userId),
     getRecentHistoryText(userId, 10),
     getConversationMessages(userId, 20),
+    pool.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [userId]),
   ]);
+
+  const userName = userRow.rows[0]?.name ?? '';
 
   const systemPrompt =
     agentType === 'companion'
-      ? buildCompanionPrompt(userMemory, recentHistoryText)
+      ? buildCompanionPrompt(userMemory, recentHistoryText, userName)
       : buildRecruiterPrompt(userMemory, recentHistoryText);
 
   const tools = agentType === 'companion' ? COMPANION_TOOLS : RECRUITER_TOOLS;
