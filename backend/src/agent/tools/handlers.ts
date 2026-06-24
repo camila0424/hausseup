@@ -289,6 +289,25 @@ export async function executeConfirmedAction(
       return { success: true, message: 'Candidato descartado.' };
     }
 
+    case 'accept_offer': {
+      const jobId = action.payload.jobId as string;
+      const actionType = action.payload.action as string;
+
+      if (actionType === 'publish_job') {
+        // cambiar estado de paused a active para que sea visible
+        await pool.query(
+          `UPDATE jobs SET status = 'active', updated_at = NOW() WHERE id = $1`,
+          [jobId]
+        );
+        return {
+          success: true,
+          message: '¡Oferta publicada! Ya está visible para los candidatos. Ahora arranco la búsqueda de perfiles que encajen. 🚀',
+        };
+      }
+
+      return { success: true, message: 'Acción completada.' };
+    }
+
     default:
       return { success: false, message: 'Acción no reconocida.' };
   }
