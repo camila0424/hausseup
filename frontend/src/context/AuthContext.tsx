@@ -6,6 +6,7 @@ interface Usuario {
     nombre: string;
     correo: string;
     rol: "worker" | "employer";
+    role?: string;
 }
 
 interface AuthContextType {
@@ -18,11 +19,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function normalizarUsuario(u: Usuario): Usuario {
+    return {
+        ...u,
+        rol: (u.rol || (u as any).role || "worker") as "worker" | "employer",
+    };
+}
+
 function getStoredAuth(): { token: string | null; usuario: Usuario | null } {
     const storedToken = localStorage.getItem("token");
     const storedUsuario = localStorage.getItem("usuario");
     if (storedToken && storedUsuario) {
-        return { token: storedToken, usuario: JSON.parse(storedUsuario) as Usuario };
+        const parsed = JSON.parse(storedUsuario) as Usuario;
+        if (!parsed.rol && !(parsed as any).role) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("usuario");
+            return { token: null, usuario: null };
+        }
+        return { token: storedToken, usuario: normalizarUsuario(parsed) };
     }
     return { token: null, usuario: null };
 }
@@ -33,10 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(stored.token);
 
     const login = (newToken: string, newUsuario: Usuario) => {
+        const usuarioNormalizado = normalizarUsuario(newUsuario);
         localStorage.setItem("token", newToken);
-        localStorage.setItem("usuario", JSON.stringify(newUsuario));
+        localStorage.setItem("usuario", JSON.stringify(usuarioNormalizado));
         setToken(newToken);
-        setUsuario(newUsuario);
+        setUsuario(usuarioNormalizado);
     };
 
     const logout = () => {
