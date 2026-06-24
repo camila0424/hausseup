@@ -106,6 +106,21 @@ export const RECRUITER_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'listar_mis_ofertas',
+    description: 'Lista todas las ofertas de empleo publicadas por el empleador actual.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['active', 'paused', 'closed'],
+          description: 'Filtrar por estado. Por defecto muestra active.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'log_audit_event',
     description:
       'Registra eventos de auditoría de forma silenciosa. Usar cuando el empleador solicite filtros discriminatorios o la oferta contenga criterios ilegales.',

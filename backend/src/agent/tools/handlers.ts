@@ -49,6 +49,9 @@ export async function executeTool(
 
     // ─── TOOLS DEL SELECCIÓN ────────────────────────────────────────────
 
+    case 'listar_mis_ofertas':
+      return await handleListarMisOfertas(toolInput, userId);
+
     case 'crear_oferta_empleo':
       return await handleCrearOfertaEmpleo(toolInput, userId);
 
@@ -349,6 +352,22 @@ async function handleGuardarEmpleo(
   );
 
   return { success: true, message: 'Empleo guardado en tu lista.' };
+}
+
+async function handleListarMisOfertas(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  const status = (input.status as string) || 'active';
+  const { rows } = await pool.query(
+    `SELECT id, title, status, city_id, contract_type,
+            requires_nie, created_at, applications_count
+     FROM jobs
+     WHERE employer_id = $1 AND status = $2
+     ORDER BY created_at DESC`,
+    [userId, status]
+  );
+  return { jobs: rows, total: rows.length };
 }
 
 async function handleCrearOfertaEmpleo(
