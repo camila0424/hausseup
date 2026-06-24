@@ -133,7 +133,7 @@ function RecruiterFeed() {
 
           if (msg.type === 'card') {
             if (msg.card.type === 'job') {
-              const jobData = msg.card.data as JobCardData & { id?: string; applications_count?: number; created_at?: string };
+              const jobData = msg.card.data as JobCardData & { id?: string; applications_count?: number; created_at?: string; city_id?: number; requires_nie?: boolean };
               const isPostingCard = jobData.id && jobData.applications_count !== undefined && jobData.created_at;
 
               if (isPostingCard) {
@@ -144,14 +144,16 @@ function RecruiterFeed() {
                         id: jobData.id as string,
                         title: jobData.title,
                         city_name: jobData.location,
-                        contract_type: jobData.contractType || '',
+                        city_id: jobData.city_id,
+                        contract_type: jobData.contractType,
                         salary: jobData.salary,
                         paperwork: jobData.paperworkRequired,
+                        requires_nie: jobData.requires_nie,
                         applications_count: jobData.applications_count as number,
                         created_at: jobData.created_at as string,
                       }}
-                      onEdit={(jobId) =>
-                        sendMessage(`Quiero editar el anuncio ${jobId}: `)
+                      onEdit={(jobId, jobTitle) =>
+                        sendMessage(`Quiero editar el anuncio "${jobTitle}" (id: ${jobId}): `)
                       }
                     />
                   </div>

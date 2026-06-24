@@ -401,6 +401,18 @@ async function handleEditarOfertaEmpleo(
     }
   }
 
+  // city viene como nombre de ciudad — resolverlo a city_id (SMALLINT)
+  if (input.city !== undefined) {
+    const { rows: cityRows } = await pool.query(
+      'SELECT id FROM cities WHERE name ILIKE $1 LIMIT 1',
+      [input.city]
+    );
+    if (cityRows.length > 0) {
+      params.push(cityRows[0].id);
+      setClauses.push(`city_id = $${params.length}`);
+    }
+  }
+
   if (setClauses.length === 0) {
     return { error: 'No hay campos para actualizar.' };
   }

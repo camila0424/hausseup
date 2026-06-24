@@ -3,13 +3,15 @@ interface JobPostingCardProps {
     id: string;
     title: string;
     city_name?: string;
-    contract_type: string;
+    city_id?: string | number;
+    contract_type?: string;
     salary?: string;
     paperwork?: string;
+    requires_nie?: boolean;
     applications_count: number;
     created_at: string;
   };
-  onEdit: (jobId: string) => void;
+  onEdit: (jobId: string, jobTitle: string) => void;
 }
 
 function formatDate(isoString: string): string {
@@ -48,34 +50,36 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
         <p style={rowStyle}>
-          <span style={labelStyle}>📍 Ciudad:</span>{' '}
-          <span style={valueStyle}>{job.city_name || '—'}</span>
+          <span style={labelStyle}>Ciudad:</span>{' '}
+          <span style={valueStyle}>{job.city_name || job.city_id || 'Ver anuncio'}</span>
         </p>
         <p style={rowStyle}>
-          <span style={labelStyle}>📄 Contrato:</span>{' '}
-          <span style={valueStyle}>{job.contract_type}</span>
+          <span style={labelStyle}>Contrato:</span>{' '}
+          <span style={valueStyle}>{job.contract_type || 'Ver anuncio'}</span>
         </p>
         <p style={rowStyle}>
-          <span style={labelStyle}>💰 Salario:</span>{' '}
+          <span style={labelStyle}>Salario:</span>{' '}
           <span style={valueStyle}>{job.salary || 'A negociar'}</span>
         </p>
         <p style={rowStyle}>
-          <span style={labelStyle}>✅ Documentación:</span>{' '}
-          <span style={valueStyle}>{job.paperwork || '—'}</span>
+          <span style={labelStyle}>Documentación:</span>{' '}
+          <span style={valueStyle}>
+            {job.paperwork || (job.requires_nie ? 'NIE requerido' : 'Sin requisito de NIE')}
+          </span>
         </p>
         <p style={rowStyle}>
-          <span style={labelStyle}>👥 Candidaturas:</span>{' '}
+          <span style={labelStyle}>Candidaturas:</span>{' '}
           <span style={valueStyle}>{job.applications_count}</span>
         </p>
         <p style={rowStyle}>
-          <span style={labelStyle}>📅 Publicada:</span>{' '}
+          <span style={labelStyle}>Publicada:</span>{' '}
           <span style={valueStyle}>{formatDate(job.created_at)}</span>
         </p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
-          onClick={() => onEdit(job.id)}
+          onClick={() => onEdit(job.id, job.title)}
           style={{
             padding: '7px 16px',
             background: '#C1502E',
