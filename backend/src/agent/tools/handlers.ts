@@ -546,7 +546,23 @@ async function handleRecomendarCandidatos(
   input: Record<string, unknown>,
   userId: string
 ): Promise<unknown> {
-  const jobId = input.jobId as number;
+  // validar que jobId parece un UUID antes de usarlo
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!input.jobId || !uuidRegex.test(String(input.jobId))) {
+    // si no es UUID válido, buscar el job más reciente del empleador
+    const { rows: latestJob } = await pool.query(
+      `SELECT id FROM jobs WHERE employer_id = $1
+       AND status = 'active'
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (latestJob.length === 0) {
+      return { candidates: [], message: 'No tienes ofertas activas para buscar candidatos.' };
+    }
+    input = { ...input, jobId: latestJob[0].id };
+  }
+
+  const jobId = input.jobId as string;
   const limit = (input.limit as number) || 5;
 
   // obtener la oferta
