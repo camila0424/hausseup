@@ -616,16 +616,21 @@ async function handleRecomendarCandidatos(
       );
 
       // privacidad: migración solo visible si el candidato dio consentimiento
-      const { rows: consentRows } = await pool.query(
-        `SELECT id FROM user_consents
-         WHERE user_id = $1
-           AND consent_type = 'migration_status_share'
-           AND granted = TRUE
-           AND revoked_at IS NULL`,
-        [c.id]
-      );
-
-      const canSeeMigration = consentRows.length > 0;
+      let canSeeMigration = false;
+      try {
+        const { rows: consentRows } = await pool.query(
+          `SELECT id FROM user_consents
+           WHERE user_id = $1
+             AND consent_type = 'migration_status_share'
+             AND granted = TRUE
+             AND revoked_at IS NULL`,
+          [c.id]
+        );
+        canSeeMigration = consentRows.length > 0;
+      } catch {
+        // si la tabla de consentimientos no existe aún, por defecto se oculta
+        canSeeMigration = false;
+      }
 
       return {
         id: c.id,
