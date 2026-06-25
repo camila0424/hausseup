@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JobCardData, CandidateCardData } from '../../types/agent';
 import { useAgentChat } from './useAgentChat';
-import { useAuth } from '../../context/AuthContext';
 import MessageBubble from './MessageBubble';
 import JobCard from './JobCard';
 import JobPostingCard from './JobPostingCard';
@@ -22,7 +21,6 @@ function RecruiterFeed() {
     setInputValue,
   } = useAgentChat();
 
-  const { usuario } = useAuth();
   const agentName = 'Pablo';
   const agentAvatar = '/img/pablo.jpeg';
 

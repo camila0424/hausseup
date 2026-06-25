@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JobCardData, CandidateCardData } from '../../types/agent';
 import { useAgentChat } from './useAgentChat';
-import { useAuth } from '../../context/AuthContext';
 import MessageBubble from './MessageBubble';
 import JobCard from './JobCard';
 import CandidateCard from './CandidateCard';
@@ -21,7 +20,6 @@ function CompanionFeed() {
     setInputValue,
   } = useAgentChat();
 
-  const { usuario } = useAuth();
   const agentName = 'María';
   const agentAvatar = '/img/maria.jpeg';
 

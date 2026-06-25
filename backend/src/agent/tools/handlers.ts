@@ -441,6 +441,7 @@ async function handleEditarOfertaEmpleo(
 
   if (setClauses.length > 0) {
     params.push(input.jobId);
+    console.log('DEBUG editar_oferta_empleo:', { setClauses, params });
     await pool.query(
       `UPDATE jobs SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`,
       params
@@ -460,7 +461,7 @@ async function handleEditarOfertaEmpleo(
   }
 
   const changed = changedFields.join(', ');
-  return { success: true, message: `Oferta actualizada. Campos modificados: ${changed}.` };
+  return { success: true, message: `Oferta actualizada: ${changed}.` };
 }
 
 async function handleCrearOfertaEmpleo(
