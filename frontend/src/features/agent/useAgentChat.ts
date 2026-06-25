@@ -43,13 +43,15 @@ export function useAgentChat(): UseAgentChatReturn {
     async (text: string) => {
       if (!text.trim() || isLoading) return;
 
-      // __init__ y __silent__ son señales silenciosas que no muestran burbuja de usuario
+      // __init__, __silent__ y __jobid:UUID__ son señales silenciosas que no muestran burbuja raw
+      const displayText = text.replace(/^__jobid:[^_]+__/, '').replace('__silent__', '').trim();
+
       if (text.trim() !== '__init__' && !text.startsWith('__silent__')) {
         addMessage({
           id: nextId(),
           type: 'text',
           role: 'user',
-          content: text.trim(),
+          content: displayText || text.trim(),
         });
       }
 
@@ -67,7 +69,7 @@ export function useAgentChat(): UseAgentChatReturn {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              message: text.replace('__silent__', '').trim(),
+              message: text.replace('__silent__', '').trim(), // __jobid:UUID__ se deja para que Claude lo lea
               history: messagesRef.current
                 .filter((m): m is Extract<ChatMessage, { type: 'text' }> => m.type === 'text')
                 .map((m) => ({ role: m.role === 'agent' ? 'assistant' : 'user', content: m.content })),
@@ -81,7 +83,9 @@ export function useAgentChat(): UseAgentChatReturn {
 
         const data = await res.json();
 
-        if (data.message) {
+        // mostrar texto del agente solo si no viene acompañado de cards
+        // (cuando hay cards, el contenido ya se representa en las tarjetas)
+        if (data.message && !(data.cards && data.cards.length > 0)) {
           addMessage({
             id: nextId(),
             type: 'text',
