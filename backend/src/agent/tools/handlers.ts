@@ -592,7 +592,7 @@ async function handleRecomendarCandidatos(
      FROM users u
      WHERE u.role = 'worker'
        AND u.id NOT IN (
-         SELECT user_id FROM applications WHERE job_id = $1
+         SELECT worker_id FROM applications WHERE job_id = $1
        )
      LIMIT $2`,
     [jobId, limit * 3]
