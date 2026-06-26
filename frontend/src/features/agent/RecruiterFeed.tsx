@@ -186,9 +186,13 @@ function RecruiterFeed() {
 
             // resto de mensajes: texto, candidatos, job cards normales
             if (msg.type === 'text') {
-              elements.push(
-                <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
-              );
+              // saltar mensajes de contexto interno (empiezan y terminan con corchetes)
+              const isContextMessage = msg.content.startsWith('[') && msg.content.endsWith(']');
+              if (!isContextMessage) {
+                elements.push(
+                  <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+                );
+              }
             } else if (msg.type === 'card' && msg.card.type === 'job') {
               elements.push(
                 <div key={msg.id} style={{ marginBottom: '8px' }}>
