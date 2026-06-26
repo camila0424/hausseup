@@ -211,12 +211,14 @@ function RecruiterFeed() {
                 <div key={msg.id} style={{ marginBottom: '8px' }}>
                   <CandidateCard
                     candidate={msg.card.data}
-                    onInterested={() =>
-                      sendMessage(`Quiero contactar a ${(msg.card.data as CandidateCardData).name}`)
-                    }
-                    onPass={() =>
-                      sendMessage(`${(msg.card.data as CandidateCardData).name} no encaja con lo que busco`)
-                    }
+                    onInterested={() => {
+                      const c = msg.card.data as CandidateCardData;
+                      sendMessage(`Quiero contactar a ${c.name} (id: ${(c as any).id})`);
+                    }}
+                    onPass={() => {
+                      const c = msg.card.data as CandidateCardData;
+                      sendMessage(`${c.name} (id: ${(c as any).id}) no encaja con lo que busco`);
+                    }}
                     onViewFullProfile={() =>
                       sendMessage(`Ver perfil completo de ${(msg.card.data as CandidateCardData).name}`)
                     }

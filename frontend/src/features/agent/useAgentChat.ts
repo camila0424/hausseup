@@ -97,8 +97,10 @@ export function useAgentChat(): UseAgentChatReturn {
         // reemplazar tarjetas del mismo tipo para evitar acumulación
         if (data.cards && Array.isArray(data.cards) && data.cards.length > 0) {
           setMessages(prev => {
-            // si llega 1 sola card, reemplaza solo esa por id — evita borrar todas las del tipo
-            if (data.cards.length === 1) {
+            const cardType = data.cards[0].type;
+
+            // para cards de tipo job-posting (tienen applications_count): reemplazar por id
+            if (data.cards.length === 1 && cardType === 'job') {
               const newCardData = data.cards[0];
               const cardId = (newCardData.data as any)?.id;
               const sinCardVieja = cardId
@@ -113,16 +115,30 @@ export function useAgentChat(): UseAgentChatReturn {
               messagesRef.current = next;
               return next;
             }
-            // si llegan múltiples cards del mismo tipo, reemplaza todas las del tipo
+
+            // para cualquier otro caso: reemplazar TODAS las cards del mismo tipo
+            // esto evita acumulación de candidatos o job listings
             const sinCardsViejas = prev.filter(m =>
-              m.type !== 'card' || m.card.type !== data.cards[0].type
+              m.type !== 'card' || m.card.type !== cardType
             );
             const nuevasCards = data.cards.map((card: AgentCard) => ({
               id: `card-${Date.now()}-${Math.random()}`,
               type: 'card' as const,
               card,
             }));
-            const next = [...sinCardsViejas, ...nuevasCards];
+
+            // añadir resumen de contexto al historial para que el backend sepa qué se mostró
+            // este mensaje no se renderiza pero sí va en el historial al backend
+            const contextSummary: ChatMessage = {
+              id: `ctx-${Date.now()}`,
+              type: 'text',
+              role: 'agent',
+              content: cardType === 'candidate'
+                ? `[Mostré ${data.cards.length} candidatos: ${data.cards.map((c: AgentCard) => (c.data as any).name).join(', ')}]`
+                : `[Mostré ${data.cards.length} ofertas de empleo]`,
+            };
+
+            const next = [...sinCardsViejas, ...nuevasCards, contextSummary];
             messagesRef.current = next;
             return next;
           });
