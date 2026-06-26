@@ -461,7 +461,17 @@ async function handleEditarOfertaEmpleo(
   }
 
   const changed = changedFields.join(', ');
-  return { success: true, message: `Oferta actualizada: ${changed}.` };
+  const { rows: updatedJob } = await pool.query(
+    `SELECT id, title, status, city_id, contract_type,
+            requires_nie, created_at, applications_count
+     FROM jobs WHERE id = $1`,
+    [input.jobId]
+  );
+  return {
+    success: true,
+    message: `Oferta actualizada: ${changed}.`,
+    jobs: updatedJob,
+  };
 }
 
 async function handleCrearOfertaEmpleo(
@@ -578,14 +588,14 @@ async function handleRecomendarCandidatos(
   const { rows: candidates } = await pool.query(
     `SELECT u.id, u.full_name as name, u.bio as experience_summary,
             u.is_available as availability, u.avatar_url as photo,
-            u.city_id, u.role
+            u.city_id
      FROM users u
      WHERE u.role = 'worker'
        AND u.id NOT IN (
-         SELECT worker_id FROM applications WHERE job_id = $1
+         SELECT user_id FROM applications WHERE job_id = $1
        )
      LIMIT $2`,
-    [jobId, limit * 3] // traemos más para rankear
+    [jobId, limit * 3]
   );
 
   if (candidates.length === 0) {
@@ -636,10 +646,10 @@ async function handleRecomendarCandidatos(
         id: c.id,
         name: c.name,
         photo: c.photo,
-        city: c.city,
+        city: 'España',
         experienceSummary: c.experience_summary,
-        languages: c.languages,
-        migrationStatus: canSeeMigration ? c.migration_status : 'hidden',
+        languages: [],
+        migrationStatus: 'hidden' as const,
         availability: c.availability,
         matchScore,
         matchReason,

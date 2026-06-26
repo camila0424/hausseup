@@ -85,7 +85,7 @@ export function useAgentChat(): UseAgentChatReturn {
 
         // mostrar texto del agente solo si no viene acompañado de cards
         // (cuando hay cards, el contenido ya se representa en las tarjetas)
-        if (data.message && !(data.cards && data.cards.length > 0)) {
+        if (data.message) {
           addMessage({
             id: nextId(),
             type: 'text',

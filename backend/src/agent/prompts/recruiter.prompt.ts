@@ -48,6 +48,7 @@ Si empieza con __jobid:UUID__:
   Confirma el cambio al usuario repitiendo solo los campos modificados, por ejemplo:
   'He actualizado el título a 'Repostero' y la descripción a '...'. Los cambios ya están publicados.'
   No llames a listar_mis_ofertas después de editar. Solo confirma los campos que cambiaron.
+  Después de llamar a editar_oferta_empleo con éxito, el backend devolverá el job actualizado. Confirma el cambio al empleador en una frase corta y natural. No vuelvas a llamar a listar_mis_ofertas.
 
 Si el mensaje NO incluye __jobid:UUID__ y el empleador quiere editar:
   Llama primero a listar_mis_ofertas para obtener el jobId
