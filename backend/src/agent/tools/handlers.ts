@@ -373,8 +373,12 @@ async function handleListarMisOfertas(
      ORDER BY j.created_at DESC`,
     [userId, status]
   );
-  return { jobs: rows, total: rows.length };
-}
+    // si la llamada es interna (para obtener jobId), no renderizar cards
+    if (input.internal === true) {
+      return { jobsList: rows, total: rows.length };
+    }
+    return { jobs: rows, total: rows.length };
+  }
 
 async function handleEditarOfertaEmpleo(
   input: Record<string, unknown>,

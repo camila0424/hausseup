@@ -116,6 +116,10 @@ export const RECRUITER_TOOLS: Anthropic.Tool[] = [
           enum: ['active', 'paused', 'closed'],
           description: 'Filtrar por estado. Por defecto muestra active.',
         },
+        internal: {
+          type: 'boolean',
+          description: 'Pasa true cuando llamas a esta tool solo para obtener un jobId interno (no para mostrar al usuario). Pasa false o omite cuando el empleador pidió ver sus anuncios.',
+        },
       },
       required: [],
     },
