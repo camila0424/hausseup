@@ -14,6 +14,8 @@ interface UseAgentChatReturn {
   confirmAction: (confirmed: boolean) => Promise<void>;
   inputValue: string;
   setInputValue: (v: string) => void;
+  profileModalData: any;
+  closeProfileModal: () => void;
 }
 
 export function useAgentChat(): UseAgentChatReturn {
@@ -21,6 +23,7 @@ export function useAgentChat(): UseAgentChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const [profileModalData, setProfileModalData] = useState<any>(null);
 
   // useRef para que las callbacks no tengan dependencias desactualizadas
   const pendingActionRef = useRef<PendingAction | null>(null);
@@ -44,7 +47,11 @@ export function useAgentChat(): UseAgentChatReturn {
       if (!text.trim() || isLoading) return;
 
       // __init__, __silent__ y __jobid:UUID__ son señales silenciosas que no muestran burbuja raw
-      const displayText = text.replace(/^__jobid:[^_]+__/, '').replace('__silent__', '').trim();
+      const displayText = text
+        .replace(/^__jobid:[^_]+__/, '')
+        .replace(/^__candid:[^_]+__/, '')
+        .replace('__silent__', '')
+        .trim();
 
       if (text.trim() !== '__init__') {
         addMessage({
@@ -96,52 +103,57 @@ export function useAgentChat(): UseAgentChatReturn {
 
         // reemplazar tarjetas del mismo tipo para evitar acumulación
         if (data.cards && Array.isArray(data.cards) && data.cards.length > 0) {
-          setMessages(prev => {
-            const cardType = data.cards[0].type;
+          // si llega un candidate_profile, abrir modal en lugar de añadir al hilo
+          if (data.cards.length === 1 && data.cards[0].type === 'candidate_profile') {
+            setProfileModalData(data.cards[0].data);
+          } else {
+            setMessages(prev => {
+              const cardType = data.cards[0].type;
 
-            // para cards de tipo job-posting (tienen applications_count): reemplazar por id
-            if (data.cards.length === 1 && cardType === 'job') {
-              const newCardData = data.cards[0];
-              const cardId = (newCardData.data as any)?.id;
-              const sinCardVieja = cardId
-                ? prev.filter(m => !(m.type === 'card' && (m.card.data as any)?.id === cardId))
-                : prev;
-              const nuevaCard = {
+              // para cards de tipo job-posting (tienen applications_count): reemplazar por id
+              if (data.cards.length === 1 && cardType === 'job') {
+                const newCardData = data.cards[0];
+                const cardId = (newCardData.data as any)?.id;
+                const sinCardVieja = cardId
+                  ? prev.filter(m => !(m.type === 'card' && (m.card.data as any)?.id === cardId))
+                  : prev;
+                const nuevaCard = {
+                  id: `card-${Date.now()}-${Math.random()}`,
+                  type: 'card' as const,
+                  card: newCardData,
+                };
+                const next = [...sinCardVieja, nuevaCard];
+                messagesRef.current = next;
+                return next;
+              }
+
+              // para cualquier otro caso: reemplazar TODAS las cards del mismo tipo
+              // esto evita acumulación de candidatos o job listings
+              const sinCardsViejas = prev.filter(m =>
+                m.type !== 'card' || m.card.type !== cardType
+              );
+              const nuevasCards = data.cards.map((card: AgentCard) => ({
                 id: `card-${Date.now()}-${Math.random()}`,
                 type: 'card' as const,
-                card: newCardData,
+                card,
+              }));
+
+              // añadir resumen de contexto al historial para que el backend sepa qué se mostró
+              // este mensaje no se renderiza pero sí va en el historial al backend
+              const contextSummary: ChatMessage = {
+                id: `ctx-${Date.now()}`,
+                type: 'text',
+                role: 'agent',
+                content: cardType === 'candidate'
+                  ? `[Mostré ${data.cards.length} candidatos: ${data.cards.map((c: AgentCard) => (c.data as any).name).join(', ')}]`
+                  : `[Mostré ${data.cards.length} ofertas de empleo]`,
               };
-              const next = [...sinCardVieja, nuevaCard];
+
+              const next = [...sinCardsViejas, ...nuevasCards, contextSummary];
               messagesRef.current = next;
               return next;
-            }
-
-            // para cualquier otro caso: reemplazar TODAS las cards del mismo tipo
-            // esto evita acumulación de candidatos o job listings
-            const sinCardsViejas = prev.filter(m =>
-              m.type !== 'card' || m.card.type !== cardType
-            );
-            const nuevasCards = data.cards.map((card: AgentCard) => ({
-              id: `card-${Date.now()}-${Math.random()}`,
-              type: 'card' as const,
-              card,
-            }));
-
-            // añadir resumen de contexto al historial para que el backend sepa qué se mostró
-            // este mensaje no se renderiza pero sí va en el historial al backend
-            const contextSummary: ChatMessage = {
-              id: `ctx-${Date.now()}`,
-              type: 'text',
-              role: 'agent',
-              content: cardType === 'candidate'
-                ? `[Mostré ${data.cards.length} candidatos: ${data.cards.map((c: AgentCard) => (c.data as any).name).join(', ')}]`
-                : `[Mostré ${data.cards.length} ofertas de empleo]`,
-            };
-
-            const next = [...sinCardsViejas, ...nuevasCards, contextSummary];
-            messagesRef.current = next;
-            return next;
-          });
+            });
+          }
         }
 
         // guardar la acción pendiente si existe
@@ -213,5 +225,7 @@ export function useAgentChat(): UseAgentChatReturn {
     confirmAction,
     inputValue,
     setInputValue,
+    profileModalData,
+    closeProfileModal: () => setProfileModalData(null),
   };
 }

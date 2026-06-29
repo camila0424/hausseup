@@ -5,6 +5,7 @@ import MessageBubble from './MessageBubble';
 import JobCard from './JobCard';
 import JobPostingCard from './JobPostingCard';
 import CandidateCard from './CandidateCard';
+import CandidateProfileCard from './CandidateProfileCard';
 import ActionConfirmModal from './ActionConfirmModal';
 import AgentDrawer from './AgentDrawer';
 
@@ -19,6 +20,8 @@ function RecruiterFeed() {
     confirmAction,
     inputValue,
     setInputValue,
+    profileModalData,
+    closeProfileModal,
   } = useAgentChat();
 
   const agentName = 'Pablo';
@@ -217,19 +220,21 @@ function RecruiterFeed() {
                     candidate={msg.card.data}
                     onInterested={() => {
                       const c = msg.card.data as CandidateCardData;
-                      sendMessage(`Quiero contactar a ${c.name} (id: ${(c as any).id})`);
+                      sendMessage(`__candid:${(c as any).id}__Quiero contactar a ${c.name}`);
                     }}
                     onPass={() => {
                       const c = msg.card.data as CandidateCardData;
-                      sendMessage(`${c.name} (id: ${(c as any).id}) no encaja con lo que busco`);
+                      sendMessage(`__candid:${(c as any).id}__${c.name} no encaja con lo que busco`);
                     }}
                     onViewFullProfile={() => {
                       const c = msg.card.data as CandidateCardData;
-                      sendMessage(`Ver perfil completo de ${c.name} (id: ${(c as any).id})`);
+                      sendMessage(`__candid:${(c as any).id}__Quiero ver el perfil completo de ${c.name}`);
                     }}
                   />
                 </div>
               );
+            } else if (msg.type === 'card' && msg.card.type === 'candidate_profile') {
+              // se renderiza como modal, no inline
             }
             i++;
           }
@@ -345,6 +350,17 @@ function RecruiterFeed() {
       )}
 
       <AgentDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onQuickMessage={sendMessage} />
+
+      {profileModalData && (
+        <CandidateProfileCard
+          candidate={profileModalData}
+          onClose={closeProfileModal}
+          onContact={() => {
+            sendMessage(`__candid:${profileModalData.id}__Quiero contactar a ${profileModalData.name}`);
+            closeProfileModal();
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes pulse {

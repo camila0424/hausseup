@@ -51,7 +51,8 @@ export interface CandidateCardData {
 
 export type AgentCard =
   | { type: 'job'; data: JobCardData }
-  | { type: 'candidate'; data: CandidateCardData };
+  | { type: 'candidate'; data: CandidateCardData }
+  | { type: 'candidate_profile'; data: any };
 
 // textos del modal de confirmación por tipo de acción
 export const ACTION_COPY: Record<
