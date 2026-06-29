@@ -38,6 +38,7 @@ function formatContractType(raw?: string): string {
 
 function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
   const [cityName, setCityName] = useState(job.city_name || '');
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
     if (job.city_id && !job.city_name) {
@@ -120,7 +121,22 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
         </p>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+        <button
+          onClick={() => setShowFullDescription(true)}
+          style={{
+            padding: '7px 12px',
+            background: 'transparent',
+            color: '#C1502E',
+            border: '1px solid #C1502E',
+            borderRadius: '9999px',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: 'pointer',
+          }}
+        >
+          Ver más
+        </button>
         <button
           onClick={() => onEdit(job.id, job.title)}
           style={{
@@ -137,6 +153,77 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
           Editar
         </button>
       </div>
+
+      {showFullDescription && (
+        <div
+          onClick={() => setShowFullDescription(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(31, 42, 68, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '500px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 10px 40px rgba(31, 42, 68, 0.2)',
+            }}
+          >
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1F2A44', margin: '0 0 16px' }}>
+              {job.title}
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              <p style={{ margin: 0, fontSize: '14px' }}>
+                <span style={{ fontWeight: '700', color: '#1F2A44' }}>Ciudad:</span>{' '}
+                <span style={{ color: '#4B4B4B' }}>{cityName || 'Por confirmar'}</span>
+              </p>
+              <p style={{ margin: 0, fontSize: '14px' }}>
+                <span style={{ fontWeight: '700', color: '#1F2A44' }}>Salario:</span>{' '}
+                <span style={{ color: '#4B4B4B' }}>{job.salary || 'A negociar'}</span>
+              </p>
+            </div>
+            {job.description && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1F2A44', margin: '0 0 8px' }}>
+                  Descripción
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#4B4B4B', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {job.description}
+                </p>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowFullDescription(false)}
+                style={{
+                  padding: '8px 20px',
+                  background: '#1F2A44',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
