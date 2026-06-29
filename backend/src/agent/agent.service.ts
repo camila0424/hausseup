@@ -16,7 +16,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // número máximo de iteraciones del loop para evitar bucles infinitos
 // es como un límite de intentos: si Claude llama a más de 5 tools seguidas, algo está mal
-const MAX_ITERATIONS = 5;
+const MAX_ITERATIONS = 10;
 
 // ─── LOOP PRINCIPAL ───────────────────────────────────────────────────────────
 
@@ -76,6 +76,14 @@ export async function runAgentLoop(
       tools,
       messages,
     });
+
+    console.log('[agent] iter', iterations, 'stop_reason:', response.stop_reason);
+    if (response.stop_reason === 'tool_use') {
+      const toolNames = response.content
+        .filter((b: any) => b.type === 'tool_use')
+        .map((b: any) => b.name);
+      console.log('[agent] tools called:', toolNames);
+    }
 
     // si Claude terminó de hablar, tomamos su respuesta final
     if (response.stop_reason === 'end_turn') {
@@ -154,8 +162,8 @@ export async function runAgentLoop(
   }
 
   if (iterations >= MAX_ITERATIONS) {
-    finalMessage =
-      'Lo siento, tuve un problema procesando tu solicitud. ¿Puedes intentarlo de nuevo?';
+    console.warn('[agent] MAX_ITERATIONS reached for user', userId);
+    finalMessage = 'Perdona, me distraje. ¿Puedes repetirme lo último?';
   }
 
   // guardar el turno en la base de datos
