@@ -53,7 +53,9 @@ export async function generateCandidateMatchReason(
           role: 'user',
           content: `Dado este candidato y esta oferta, devuelve UNA SOLA FRASE en español
 por qué recomiendas este candidato. Máximo 20 palabras.
-Empieza exactamente con "Te lo recomiendo porque". Usa datos concretos.
+Empieza exactamente con "Te lo recomiendo porque". Usa SOLO datos del JSON.
+NUNCA inventes ciudades, barrios ni detalles que no estén en los datos.
+Si no hay datos suficientes, di simplemente que su disponibilidad encaja.
 CANDIDATO: ${JSON.stringify(candidate)}
 OFERTA: ${JSON.stringify(job)}
 Responde SOLO con la frase. Sin comillas, sin punto final.`,

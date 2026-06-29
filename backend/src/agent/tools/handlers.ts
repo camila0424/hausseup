@@ -611,23 +611,39 @@ async function handleRecomendarCandidatos(
   }
   const job = jobRows[0];
 
-  // obtener candidatos con perfil activo
+  const { rows: jobCityRow } = await pool.query(
+    'SELECT name FROM cities WHERE id = $1',
+    [job.city_id]
+  );
+  const jobCityName = jobCityRow[0]?.name || 'la zona';
+
+  // obtener candidatos con perfil activo, filtrados por la misma ciudad del job
   // en una versión futura esto usará embeddings + similitud coseno
   const { rows: candidates } = await pool.query(
     `SELECT u.id, u.full_name as name, u.bio as experience_summary,
             u.is_available as availability, u.avatar_url as photo,
-            u.city_id
+            u.city_id, c.name as city_name
      FROM users u
+     LEFT JOIN cities c ON u.city_id = c.id
      WHERE u.role = 'worker'
+       AND u.city_id = $1
        AND u.id NOT IN (
-         SELECT worker_id FROM applications WHERE job_id = $1
+         SELECT worker_id FROM applications WHERE job_id = $2
        )
-     LIMIT $2`,
-    [jobId, limit * 3]
+     LIMIT $3`,
+    [job.city_id, jobId, limit * 3]
   );
 
   if (candidates.length === 0) {
-    return { candidates: [], message: 'No hay candidatos disponibles para esta oferta aún.' };
+    const { rows: cityRow } = await pool.query(
+      'SELECT name FROM cities WHERE id = $1',
+      [job.city_id]
+    );
+    const cityName = cityRow[0]?.name || 'esa ciudad';
+    return {
+      candidates: [],
+      message: `Aún no hay trabajadores registrados en ${cityName} disponibles para este puesto. Te aviso en cuanto aparezca alguno.`
+    };
   }
 
   // rankear con score simple + generar matchReason
@@ -645,11 +661,10 @@ async function handleRecomendarCandidatos(
         {
           id: job.id,
           title: job.title,
-          company: job.company_name,
-          location: job.location,
+          company: 'Empresa en Hausseup',
+          location: jobCityName,
           description: job.description,
-          salary: job.salary,
-          paperworkRequired: job.paperwork_required,
+          paperworkRequired: job.requires_nie ? 'required' : 'none',
         }
       );
 
@@ -674,7 +689,7 @@ async function handleRecomendarCandidatos(
         id: c.id,
         name: c.name,
         photo: c.photo,
-        city: 'España',
+        city: c.city_name || 'España',
         experienceSummary: c.experience_summary,
         languages: [],
         migrationStatus: 'hidden' as const,
