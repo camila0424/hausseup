@@ -223,9 +223,10 @@ function RecruiterFeed() {
                       const c = msg.card.data as CandidateCardData;
                       sendMessage(`${c.name} (id: ${(c as any).id}) no encaja con lo que busco`);
                     }}
-                    onViewFullProfile={() =>
-                      sendMessage(`Ver perfil completo de ${(msg.card.data as CandidateCardData).name}`)
-                    }
+                    onViewFullProfile={() => {
+                      const c = msg.card.data as CandidateCardData;
+                      sendMessage(`Ver perfil completo de ${c.name} (id: ${(c as any).id})`);
+                    }}
                   />
                 </div>
               );

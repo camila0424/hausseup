@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface JobPostingCardProps {
   job: {
@@ -154,7 +155,7 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
         </button>
       </div>
 
-      {showFullDescription && (
+      {showFullDescription && createPortal(
         <div
           onClick={() => setShowFullDescription(false)}
           style={{
@@ -164,7 +165,7 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
+            zIndex: 9999,
             padding: '16px',
           }}
         >
@@ -222,7 +223,8 @@ function JobPostingCard({ job, onEdit }: JobPostingCardProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
