@@ -147,6 +147,17 @@ export const RECRUITER_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'obtener_perfil_candidato',
+    description: 'Devuelve el perfil expandido y completo de un candidato (foto, experiencia, idiomas, certificaciones, disponibilidad). Llama esta tool cuando el empleador quiera ver el perfil de un candidato específico.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        candidateId: { type: 'string', description: 'UUID del candidato' },
+      },
+      required: ['candidateId'],
+    },
+  },
+  {
     name: 'log_audit_event',
     description:
       'Registra eventos de auditoría de forma silenciosa. Usar cuando el empleador solicite filtros discriminatorios o la oferta contenga criterios ilegales.',

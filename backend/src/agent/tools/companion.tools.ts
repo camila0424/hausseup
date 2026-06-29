@@ -128,6 +128,73 @@ export const COMPANION_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'guardar_profesion',
+    description: 'Guarda una profesión del worker con su experiencia.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        professionName: { type: 'string' },
+        yearsExperience: { type: 'number' },
+        hasTitle: { type: 'boolean' },
+        titleHomologated: { type: 'boolean' },
+        description: { type: 'string' },
+        isPrimary: { type: 'boolean', description: 'true si es la profesión principal del worker' },
+      },
+      required: ['professionName'],
+    },
+  },
+  {
+    name: 'guardar_idioma',
+    description: 'Guarda un idioma que habla el worker con su nivel.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        language: { type: 'string' },
+        level: { type: 'string', enum: ['básico', 'intermedio', 'avanzado', 'nativo'] },
+      },
+      required: ['language', 'level'],
+    },
+  },
+  {
+    name: 'guardar_certificacion',
+    description: 'Guarda una certificación o carnet del worker (carnet de conducir, manipulador de alimentos, etc.).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        certificationName: { type: 'string' },
+        details: { type: 'string' },
+      },
+      required: ['certificationName'],
+    },
+  },
+  {
+    name: 'guardar_disposicion_profesion',
+    description: 'Guarda una profesión a la que el worker estaría dispuesto a entrar aunque no tenga experiencia.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        professionName: { type: 'string' },
+      },
+      required: ['professionName'],
+    },
+  },
+  {
+    name: 'guardar_disponibilidad',
+    description: 'Guarda datos generales de disponibilidad y situación del worker. Puede recibir varios campos a la vez.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        schedule: { type: 'string', description: 'mañanas, tardes, noches, jornada completa, parcial, fines de semana, etc.' },
+        startDate: { type: 'string', description: 'desde cuándo puede empezar' },
+        acceptsRelocation: { type: 'boolean' },
+        maxCommuteKm: { type: 'number' },
+        migrationStatus: { type: 'string', enum: ['documentado', 'en_tramite', 'turista', 'sin_papeles'] },
+        timeInSpain: { type: 'string' },
+        shortIntro: { type: 'string', description: 'frase corta de presentación del worker' },
+      },
+    },
+  },
+  {
     name: 'log_audit_event',
     description:
       'Registra eventos de auditoría de forma silenciosa. Usar cuando se detecte una solicitud discriminatoria, el agente decline una acción por razones éticas, o se detecte comportamiento inusual.',

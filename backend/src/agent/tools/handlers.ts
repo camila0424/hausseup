@@ -47,6 +47,21 @@ export async function executeTool(
     case 'guardar_empleo':
       return await handleGuardarEmpleo(toolInput, userId);
 
+    case 'guardar_profesion':
+      return await handleGuardarProfesion(toolInput, userId);
+
+    case 'guardar_idioma':
+      return await handleGuardarIdioma(toolInput, userId);
+
+    case 'guardar_certificacion':
+      return await handleGuardarCertificacion(toolInput, userId);
+
+    case 'guardar_disposicion_profesion':
+      return await handleGuardarDisposicionProfesion(toolInput, userId);
+
+    case 'guardar_disponibilidad':
+      return await handleGuardarDisponibilidad(toolInput, userId);
+
     // ─── TOOLS DEL SELECCIÓN ────────────────────────────────────────────
 
     case 'listar_mis_ofertas':
@@ -60,6 +75,9 @@ export async function executeTool(
 
     case 'recomendar_candidatos':
       return await handleRecomendarCandidatos(toolInput, userId);
+
+    case 'obtener_perfil_candidato':
+      return await handleObtenerPerfilCandidato(toolInput);
 
     case 'programar_entrevista':
       return await handleProgramarEntrevista(toolInput, userId);
@@ -756,6 +774,161 @@ async function handleLogAuditEvent(
     // tabla puede no existir aún — nunca bloquear el agente por esto
   }
   return { logged: true };
+}
+
+async function handleObtenerPerfilCandidato(
+  input: Record<string, unknown>
+): Promise<unknown> {
+  const candidateId = input.candidateId as string;
+  if (!candidateId) return { error: 'Falta candidateId' };
+
+  const { rows: userRows } = await pool.query(
+    `SELECT u.id, u.full_name as name, u.avatar_url as photo,
+            u.bio, u.short_intro, u.migration_status, u.time_in_spain,
+            u.availability_schedule, u.availability_start_date,
+            u.accepts_relocation, u.max_commute_km,
+            c.name as city_name
+     FROM users u
+     LEFT JOIN cities c ON u.city_id = c.id
+     WHERE u.id = $1 AND u.role = 'worker'`,
+    [candidateId]
+  );
+
+  if (userRows.length === 0) return { error: 'Candidato no encontrado' };
+  const user = userRows[0];
+
+  const [profsResult, langsResult, certsResult, openToResult] = await Promise.all([
+    pool.query(
+      `SELECT profession_name as name, years_experience as "yearsExperience",
+              has_title as "hasTitle", title_homologated as "titleHomologated",
+              description
+       FROM user_professions WHERE user_id = $1
+       ORDER BY is_primary DESC, years_experience DESC NULLS LAST`,
+      [candidateId]
+    ),
+    pool.query(
+      `SELECT language, level FROM user_languages WHERE user_id = $1`,
+      [candidateId]
+    ),
+    pool.query(
+      `SELECT certification_name as name, details
+       FROM user_certifications WHERE user_id = $1`,
+      [candidateId]
+    ),
+    pool.query(
+      `SELECT profession_name FROM user_open_to_professions WHERE user_id = $1`,
+      [candidateId]
+    ),
+  ]);
+
+  return {
+    candidateProfile: {
+      id: user.id,
+      name: user.name,
+      photo: user.photo,
+      city: user.city_name || 'España',
+      shortIntro: user.short_intro || user.bio,
+      migrationStatus: user.migration_status,
+      timeInSpain: user.time_in_spain,
+      availability: user.availability_schedule,
+      availabilityStartDate: user.availability_start_date,
+      acceptsRelocation: user.accepts_relocation,
+      maxCommuteKm: user.max_commute_km,
+      professions: profsResult.rows,
+      languages: langsResult.rows,
+      certifications: certsResult.rows,
+      openToProfessions: openToResult.rows.map((r: any) => r.profession_name),
+    },
+  };
+}
+
+async function handleGuardarProfesion(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  await pool.query(
+    `INSERT INTO user_professions
+     (user_id, profession_name, years_experience, has_title, title_homologated, description, is_primary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      userId,
+      input.professionName,
+      input.yearsExperience || null,
+      input.hasTitle || false,
+      input.titleHomologated || false,
+      input.description || null,
+      input.isPrimary || false,
+    ]
+  );
+  return { success: true };
+}
+
+async function handleGuardarIdioma(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  await pool.query(
+    `INSERT INTO user_languages (user_id, language, level)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, language)
+     DO UPDATE SET level = $3`,
+    [userId, input.language, input.level]
+  );
+  return { success: true };
+}
+
+async function handleGuardarCertificacion(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  await pool.query(
+    `INSERT INTO user_certifications (user_id, certification_name, details)
+     VALUES ($1, $2, $3)`,
+    [userId, input.certificationName, input.details || null]
+  );
+  return { success: true };
+}
+
+async function handleGuardarDisposicionProfesion(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  await pool.query(
+    `INSERT INTO user_open_to_professions (user_id, profession_name)
+     VALUES ($1, $2)`,
+    [userId, input.professionName]
+  );
+  return { success: true };
+}
+
+async function handleGuardarDisponibilidad(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<unknown> {
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  const fieldMap: Record<string, string> = {
+    schedule: 'availability_schedule',
+    startDate: 'availability_start_date',
+    acceptsRelocation: 'accepts_relocation',
+    maxCommuteKm: 'max_commute_km',
+    migrationStatus: 'migration_status',
+    timeInSpain: 'time_in_spain',
+    shortIntro: 'short_intro',
+  };
+  for (const [inputKey, dbCol] of Object.entries(fieldMap)) {
+    if (input[inputKey] !== undefined) {
+      params.push(input[inputKey]);
+      setClauses.push(`${dbCol} = $${params.length}`);
+    }
+  }
+  if (setClauses.length === 0) return { success: true };
+  params.push(userId);
+  await pool.query(
+    `UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`,
+    params
+  );
+  return { success: true };
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
