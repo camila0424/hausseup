@@ -1040,9 +1040,28 @@ async function handleGuardarDisponibilidad(
     timeInSpain: 'time_in_spain',
     shortIntro: 'short_intro',
   };
+  // truncar campos de texto largos para no romper columnas VARCHAR(300)
+  const truncate = (s: unknown, max: number = 290): string | null => {
+    if (typeof s !== 'string') return null;
+    return s.length > max ? s.slice(0, max) : s;
+  };
+
+  const safeShortIntro = truncate(input.shortIntro);
+  const safeAvailabilitySchedule = truncate(input.schedule);
+  const safeMigrationStatus = truncate(input.migrationStatus, 50);
+  const safeTimeInSpain = truncate(input.timeInSpain, 100);
+
+  const safeValues: Record<string, unknown> = {
+    schedule: safeAvailabilitySchedule,
+    shortIntro: safeShortIntro,
+    migrationStatus: safeMigrationStatus,
+    timeInSpain: safeTimeInSpain,
+  };
+
   for (const [inputKey, dbCol] of Object.entries(fieldMap)) {
     if (input[inputKey] !== undefined) {
-      params.push(input[inputKey]);
+      const value = inputKey in safeValues ? safeValues[inputKey] : input[inputKey];
+      params.push(value);
       setClauses.push(`${dbCol} = $${params.length}`);
     }
   }
