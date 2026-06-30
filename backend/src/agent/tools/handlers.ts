@@ -3,6 +3,14 @@ import type { PendingAction } from '../types';
 import { generateMatchReason, generateCandidateMatchReason } from './matchReason';
 
 import pool from '../../config/db';
+import {
+  generateEmbedding,
+  cosineSimilarity,
+  upsertEmbedding,
+  getEmbedding,
+  buildWorkerText,
+  buildJobText,
+} from '../embeddings/voyage';
 
 // mapa en memoria para acciones pendientes de confirmación (HITL)
 // la clave es el UUID de la acción, el valor es la acción con su TTL
@@ -100,7 +108,10 @@ async function handleBuscarEmpleos(
 ): Promise<unknown> {
   const limit = (input.limit as number) || 3;
 
-  // construir query dinámica según los filtros que proporcione el agente
+  // obtener embedding del worker
+  const workerEmbedding = await getEmbedding('user_profile', userId);
+
+  // candidatos jobs activos
   let query = `
     SELECT j.id, j.title, j.description, j.contract_type,
            j.requires_nie, j.city_id, j.status, j.created_at,
@@ -110,48 +121,40 @@ async function handleBuscarEmpleos(
     WHERE j.status = 'active'
   `;
   const params: unknown[] = [];
-
   if (input.city) {
     params.push(`%${input.city}%`);
     query += ` AND c.name ILIKE $${params.length}`;
   }
-
-  if (input.sector) {
-    params.push(`%${input.sector}%`);
-    query += ` AND (j.title ILIKE $${params.length} OR j.description ILIKE $${params.length})`;
-  }
-
   if (input.contractType) {
     params.push(input.contractType);
     query += ` AND j.contract_type = $${params.length}`;
   }
-
-  params.push(limit);
+  params.push(limit * 5);
   query += ` ORDER BY j.created_at DESC LIMIT $${params.length}`;
 
   const { rows: jobs } = await pool.query(query, params);
-
-  // obtener perfil del usuario para generar frases de match
-  const { rows: profileRows } = await pool.query(
-    'SELECT * FROM users WHERE id = $1',
-    [userId]
-  );
+  const { rows: profileRows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
   const profile = profileRows[0];
 
-  // generar matchScore y matchReason para cada empleo
   const jobsWithMatch = await Promise.all(
     jobs.map(async (job: Record<string, unknown>) => {
-      // matchScore simple basado en coincidencia de campos — mejorar con embeddings en Fase 2
-      const matchScore = calculateSimpleMatchScore(profile, job);
+      let semanticScore = 0.5;
+      if (workerEmbedding) {
+        const jobEmb = await getEmbedding('job', job.id as string);
+        if (jobEmb) {
+          const sim = cosineSimilarity(workerEmbedding, jobEmb);
+          semanticScore = (sim + 1) / 2;
+        }
+      }
+      const ruleScore = calculateSimpleMatchScore(profile, job) / 100;
+      const matchScore = Math.round((semanticScore * 0.7 + ruleScore * 0.3) * 100);
 
       const matchReason = await generateMatchReason(
         {
           userId: profile.id,
-          name: profile.name,
-          city: profile.city,
-          sector: profile.sector,
-          experienceSummary: profile.experience_summary,
-          languages: profile.languages,
+          name: profile.full_name,
+          city: profile.city_name,
+          experienceSummary: profile.bio,
         },
         {
           id: job.id as number,
@@ -178,10 +181,10 @@ async function handleBuscarEmpleos(
     })
   );
 
-  // filtrar tarjetas sin matchReason válido (regla dura del doc maestro)
-  const validJobs = jobsWithMatch.filter(
-    (j) => j.matchScore !== undefined && j.matchReason && j.matchReason.length > 0
-  );
+  jobsWithMatch.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+  const validJobs = jobsWithMatch
+    .filter((j) => j.matchScore !== undefined && j.matchReason && j.matchReason.length > 0)
+    .slice(0, limit);
 
   return { jobs: validJobs, total: validJobs.length };
 }
@@ -239,6 +242,8 @@ async function handleActualizarPerfil(
     }
   }
 
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
 }
 
@@ -487,6 +492,26 @@ async function handleEditarOfertaEmpleo(
     changedFields.push('salario');
   }
 
+  // regenerar embedding del job tras editar
+  (async () => {
+    const { rows: jobInfo } = await pool.query(
+      `SELECT j.title, j.description, j.contract_type, j.requires_nie, c.name as city_name
+       FROM jobs j LEFT JOIN cities c ON j.city_id = c.id WHERE j.id = $1`,
+      [input.jobId]
+    );
+    if (jobInfo[0]) {
+      const text = buildJobText({
+        title: jobInfo[0].title,
+        description: jobInfo[0].description,
+        cityName: jobInfo[0].city_name,
+        contractType: jobInfo[0].contract_type,
+        requiresNie: jobInfo[0].requires_nie,
+      });
+      const vector = await generateEmbedding(text);
+      if (vector) await upsertEmbedding('job', String(input.jobId), vector);
+    }
+  })().catch((e) => console.error('[embeddings] job edit error:', e));
+
   const changed = changedFields.join(', ');
   const { rows: updatedJob } = await pool.query(
     `SELECT j.id, j.title, j.description, j.status, j.city_id, j.contract_type,
@@ -579,6 +604,23 @@ async function handleCrearOfertaEmpleo(
     [userId, `job_${newJob.id}_salary_info`, JSON.stringify(input.salary || '')]
   );
 
+  // generar embedding semántico del job en background (no bloquea la respuesta)
+  (async () => {
+    const { rows: cityRows } = await pool.query(
+      'SELECT name FROM cities WHERE id = $1',
+      [resolvedCityId]
+    );
+    const text = buildJobText({
+      title: input.title as string,
+      description: input.description as string,
+      cityName: cityRows[0]?.name,
+      contractType: input.contractType as string,
+      requiresNie: input.paperworkRequired !== 'none',
+    });
+    const vector = await generateEmbedding(text);
+    if (vector) await upsertEmbedding('job', newJob.id, vector);
+  })().catch((e) => console.error('[embeddings] job create error:', e));
+
   // crear acción pendiente para que el empleador confirme la publicación
   const pendingAction: PendingAction = {
     id: randomUUID(),
@@ -607,13 +649,10 @@ async function handleRecomendarCandidatos(
   input: Record<string, unknown>,
   userId: string
 ): Promise<unknown> {
-  // validar que jobId parece un UUID antes de usarlo
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!input.jobId || !uuidRegex.test(String(input.jobId))) {
-    // si no es UUID válido, buscar el job más reciente del empleador
     const { rows: latestJob } = await pool.query(
-      `SELECT id FROM jobs WHERE employer_id = $1
-       AND status = 'active'
+      `SELECT id FROM jobs WHERE employer_id = $1 AND status = 'active'
        ORDER BY created_at DESC LIMIT 1`,
       [userId]
     );
@@ -626,21 +665,30 @@ async function handleRecomendarCandidatos(
   const jobId = input.jobId as string;
   const limit = (input.limit as number) || 5;
 
-  // obtener la oferta
   const { rows: jobRows } = await pool.query('SELECT * FROM jobs WHERE id = $1', [jobId]);
-  if (jobRows.length === 0) {
-    return { error: 'Empleo no encontrado.' };
-  }
+  if (jobRows.length === 0) return { error: 'Empleo no encontrado.' };
   const job = jobRows[0];
 
   const { rows: jobCityRow } = await pool.query(
-    'SELECT name FROM cities WHERE id = $1',
-    [job.city_id]
+    'SELECT name FROM cities WHERE id = $1', [job.city_id]
   );
   const jobCityName = jobCityRow[0]?.name || 'la zona';
 
-  // obtener candidatos con perfil activo, filtrados por la misma ciudad del job
-  // en una versión futura esto usará embeddings + similitud coseno
+  // obtener embedding del job (si no existe, generarlo ahora)
+  let jobEmbedding = await getEmbedding('job', jobId);
+  if (!jobEmbedding) {
+    const text = buildJobText({
+      title: job.title,
+      description: job.description,
+      cityName: jobCityName,
+      contractType: job.contract_type,
+      requiresNie: job.requires_nie,
+    });
+    jobEmbedding = await generateEmbedding(text);
+    if (jobEmbedding) await upsertEmbedding('job', jobId, jobEmbedding);
+  }
+
+  // candidatos en la misma ciudad
   const { rows: candidates } = await pool.query(
     `SELECT u.id, u.full_name as name, u.bio as experience_summary,
             u.is_available as availability, u.avatar_url as photo,
@@ -649,29 +697,31 @@ async function handleRecomendarCandidatos(
      LEFT JOIN cities c ON u.city_id = c.id
      WHERE u.role = 'worker'
        AND u.city_id = $1
-       AND u.id NOT IN (
-         SELECT worker_id FROM applications WHERE job_id = $2
-       )
+       AND u.id NOT IN (SELECT worker_id FROM applications WHERE job_id = $2)
      LIMIT $3`,
-    [job.city_id, jobId, limit * 3]
+    [job.city_id, jobId, limit * 5]
   );
 
   if (candidates.length === 0) {
-    const { rows: cityRow } = await pool.query(
-      'SELECT name FROM cities WHERE id = $1',
-      [job.city_id]
-    );
-    const cityName = cityRow[0]?.name || 'esa ciudad';
     return {
       candidates: [],
-      message: `Aún no hay trabajadores registrados en ${cityName} disponibles para este puesto. Te aviso en cuanto aparezca alguno.`
+      message: `Aún no hay trabajadores registrados en ${jobCityName} disponibles para este puesto. Te aviso en cuanto aparezca alguno.`,
     };
   }
 
-  // rankear con score simple + generar matchReason
+  // calcular score combinado: 70% semántico + 30% reglas simples
   const ranked = await Promise.all(
     candidates.map(async (c: Record<string, unknown>) => {
-      const matchScore = calculateSimpleMatchScore(c, job);
+      let semanticScore = 0.5;
+      if (jobEmbedding) {
+        const workerEmbedding = await getEmbedding('user_profile', c.id as string);
+        if (workerEmbedding) {
+          const sim = cosineSimilarity(jobEmbedding, workerEmbedding);
+          semanticScore = (sim + 1) / 2;
+        }
+      }
+      const ruleScore = calculateSimpleMatchScore(c, job) / 100;
+      const matchScore = Math.round((semanticScore * 0.7 + ruleScore * 0.3) * 100);
 
       const matchReason = await generateCandidateMatchReason(
         {
@@ -690,23 +740,6 @@ async function handleRecomendarCandidatos(
         }
       );
 
-      // privacidad: migración solo visible si el candidato dio consentimiento
-      let canSeeMigration = false;
-      try {
-        const { rows: consentRows } = await pool.query(
-          `SELECT id FROM user_consents
-           WHERE user_id = $1
-             AND consent_type = 'migration_status_share'
-             AND granted = TRUE
-             AND revoked_at IS NULL`,
-          [c.id]
-        );
-        canSeeMigration = consentRows.length > 0;
-      } catch {
-        // si la tabla de consentimientos no existe aún, por defecto se oculta
-        canSeeMigration = false;
-      }
-
       return {
         id: c.id,
         name: c.name,
@@ -722,7 +755,6 @@ async function handleRecomendarCandidatos(
     })
   );
 
-  // ordenar por matchScore y tomar los top `limit`
   ranked.sort((a, b) => b.matchScore - a.matchScore);
   const topCandidates = ranked.slice(0, limit).filter(
     (c) => c.matchReason && c.matchReason.length > 0
@@ -860,6 +892,8 @@ async function handleGuardarProfesion(
       input.isPrimary || false,
     ]
   );
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
 }
 
@@ -874,6 +908,8 @@ async function handleGuardarIdioma(
      DO UPDATE SET level = $3`,
     [userId, input.language, input.level]
   );
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
 }
 
@@ -886,6 +922,8 @@ async function handleGuardarCertificacion(
      VALUES ($1, $2, $3)`,
     [userId, input.certificationName, input.details || null]
   );
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
 }
 
@@ -898,6 +936,8 @@ async function handleGuardarDisposicionProfesion(
      VALUES ($1, $2)`,
     [userId, input.professionName]
   );
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
 }
 
@@ -928,7 +968,45 @@ async function handleGuardarDisponibilidad(
     `UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`,
     params
   );
+  // regenerar embedding en background tras cualquier cambio del perfil
+  regenerateWorkerEmbedding(userId).catch((e) => console.error('[embeddings] regen failed:', e));
   return { success: true };
+}
+
+async function regenerateWorkerEmbedding(userId: string): Promise<void> {
+  try {
+    const [userRes, profsRes, langsRes, certsRes, openToRes] = await Promise.all([
+      pool.query(
+        `SELECT u.full_name as name, u.bio, u.short_intro, c.name as city_name
+         FROM users u LEFT JOIN cities c ON u.city_id = c.id WHERE u.id = $1`,
+        [userId]
+      ),
+      pool.query(
+        `SELECT profession_name as name, description, years_experience as "yearsExperience"
+         FROM user_professions WHERE user_id = $1`,
+        [userId]
+      ),
+      pool.query(`SELECT language, level FROM user_languages WHERE user_id = $1`, [userId]),
+      pool.query(`SELECT certification_name as name FROM user_certifications WHERE user_id = $1`, [userId]),
+      pool.query(`SELECT profession_name FROM user_open_to_professions WHERE user_id = $1`, [userId]),
+    ]);
+    const user = userRes.rows[0];
+    if (!user) return;
+    const text = buildWorkerText({
+      name: user.name,
+      bio: user.bio,
+      shortIntro: user.short_intro,
+      city: user.city_name,
+      professions: profsRes.rows,
+      languages: langsRes.rows,
+      certifications: certsRes.rows,
+      openToProfessions: openToRes.rows.map((r: any) => r.profession_name),
+    });
+    const vector = await generateEmbedding(text);
+    if (vector) await upsertEmbedding('user_profile', userId, vector);
+  } catch (err) {
+    console.error('[embeddings] worker regen error:', (err as Error).message);
+  }
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
