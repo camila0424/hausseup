@@ -137,6 +137,41 @@ async function handleBuscarEmpleos(
     params.push(`%${input.city}%`);
     query += ` AND c.name ILIKE $${params.length}`;
   }
+  const contractTypeMap: Record<string, string> = {
+    'indefinido': 'full_time',
+    'permanente': 'full_time',
+    'tiempo completo': 'full_time',
+    'jornada completa': 'full_time',
+    'completa': 'full_time',
+    'full time': 'full_time',
+    'full_time': 'full_time',
+    'tiempo parcial': 'part_time',
+    'media jornada': 'part_time',
+    'parcial': 'part_time',
+    'part time': 'part_time',
+    'part_time': 'part_time',
+    'temporal': 'temporary',
+    'temporary': 'temporary',
+    'por horas': 'temporary',
+    'practicas': 'internship',
+    'prácticas': 'internship',
+    'internship': 'internship',
+    'becario': 'internship',
+    'freelance': 'freelance',
+    'autonomo': 'freelance',
+    'autónomo': 'freelance',
+    'por cuenta propia': 'freelance',
+  };
+  if (input.contractType) {
+    const normalized = String(input.contractType).toLowerCase().trim();
+    const mapped = contractTypeMap[normalized];
+    if (mapped) {
+      input.contractType = mapped;
+    } else {
+      // si no reconocemos el valor, lo ignoramos en lugar de romper la query
+      delete input.contractType;
+    }
+  }
   if (input.contractType) {
     params.push(input.contractType);
     query += ` AND j.contract_type = $${params.length}`;
@@ -572,6 +607,42 @@ async function handleCrearOfertaEmpleo(
         `SELECT id FROM cities WHERE name = 'Madrid' LIMIT 1`
       );
       resolvedCityId = cityRows[0]?.id ?? 1;
+    }
+  }
+
+  const contractTypeMap: Record<string, string> = {
+    'indefinido': 'full_time',
+    'permanente': 'full_time',
+    'tiempo completo': 'full_time',
+    'jornada completa': 'full_time',
+    'completa': 'full_time',
+    'full time': 'full_time',
+    'full_time': 'full_time',
+    'tiempo parcial': 'part_time',
+    'media jornada': 'part_time',
+    'parcial': 'part_time',
+    'part time': 'part_time',
+    'part_time': 'part_time',
+    'temporal': 'temporary',
+    'temporary': 'temporary',
+    'por horas': 'temporary',
+    'practicas': 'internship',
+    'prácticas': 'internship',
+    'internship': 'internship',
+    'becario': 'internship',
+    'freelance': 'freelance',
+    'autonomo': 'freelance',
+    'autónomo': 'freelance',
+    'por cuenta propia': 'freelance',
+  };
+  if (input.contractType) {
+    const normalized = String(input.contractType).toLowerCase().trim();
+    const mapped = contractTypeMap[normalized];
+    if (mapped) {
+      input.contractType = mapped;
+    } else {
+      // si no reconocemos el valor, lo ignoramos en lugar de romper la query
+      delete input.contractType;
     }
   }
 
