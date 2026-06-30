@@ -104,7 +104,7 @@ function AgentDrawer({ open, onClose, onQuickMessage }: AgentDrawerProps) {
               onClick={() => { onClose(); onQuickMessage('__silent__Muéstrame mis anuncios'); }}
             />
           )}
-          <DrawerItem label="Ajustes" icon="⚙️" onClick={() => { onClose(); navigate('/ajustes'); }} />
+          <DrawerItem label="Ajustes" icon="⚙️" onClick={() => { onQuickMessage('Quiero ajustar mi cuenta'); onClose(); }} />
         </nav>
 
         {/* cerrar sesión al fondo */}
