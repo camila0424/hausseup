@@ -179,7 +179,13 @@ async function handleBuscarEmpleos(
   params.push(limit * 5);
   query += ` ORDER BY j.created_at DESC LIMIT $${params.length}`;
 
+  console.log('[buscar_empleos DEBUG] input completo:', JSON.stringify(input));
+  console.log('[buscar_empleos DEBUG] query:', query);
+  console.log('[buscar_empleos DEBUG] params:', params);
+
   const { rows: jobs } = await pool.query(query, params);
+
+  console.log('[buscar_empleos DEBUG] jobs encontrados:', jobs.length, jobs.map(j => ({ id: j.id, title: j.title, city_name: j.city_name, status: j.status })));
   const { rows: profileRows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
   const profile = profileRows[0];
 
