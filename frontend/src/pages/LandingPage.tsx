@@ -240,6 +240,10 @@ function LandingPage() {
 
           {/* Columna izquierda */}
           <div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-[#EAB308]/15 border border-[#EAB308]/30 text-[#1F2A44] text-sm font-medium">
+              <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse"></span>
+              Plataforma en fase de arranque. Estamos incorporando empresas en toda España.
+            </div>
             {/* H1 — primer elemento visible del hero (eyebrow eliminado) */}
             <h1
               style={{
