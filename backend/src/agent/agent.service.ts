@@ -34,6 +34,8 @@ export async function runAgentLoop(
     getUserMemoryText(userId),
     getRecentHistoryText(userId, 10),
   ]);
+  console.log('[agent DEBUG] userMemory raw:', JSON.stringify(userMemory));
+  console.log('[agent DEBUG] userMemory length:', userMemory?.length);
   const historyMessages: Anthropic.MessageParam[] = (history ?? []).map((m) => ({
     role: m.role,
     content: m.content,
