@@ -26,16 +26,11 @@ export async function runAgentLoop(
   agentType: AgentType,
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<AgentResponse> {
-  console.log('[agent DEBUG] userMessage recibido:', JSON.stringify(userMessage));
-  console.log('[agent DEBUG] agentType:', agentType, 'userId:', userId);
-
   // preparar contexto: memoria, herramientas y nombre del usuario
   const [userMemory, recentHistoryText] = await Promise.all([
     getUserMemoryText(userId),
     getRecentHistoryText(userId, 10),
   ]);
-  console.log('[agent DEBUG] userMemory raw:', JSON.stringify(userMemory));
-  console.log('[agent DEBUG] userMemory length:', userMemory?.length);
   const historyMessages: Anthropic.MessageParam[] = (history ?? []).map((m) => ({
     role: m.role,
     content: m.content,
@@ -54,7 +49,11 @@ export async function runAgentLoop(
 
   // short-circuit: primer mensaje de companion sin memoria previa → texto literal, sin llamar a Claude
   if (userMessage === '__init__' && agentType === 'companion') {
-    const hasMemory = userMemory && userMemory.trim() !== '' && userMemory.trim() !== 'Sin datos previos.';
+    const memoryText = (userMemory || '').trim();
+    const isEmpty = memoryText === '' || memoryText === 'Sin datos previos.';
+    // caso especial: el nombre por sí solo NO cuenta como memoria previa real
+    const isOnlyName = /^nombre:\s*\S+\s*$/i.test(memoryText);
+    const hasMemory = !isEmpty && !isOnlyName;
     if (!hasMemory) {
       const firstName = userName.trim().split(' ')[0] || '';
       const greeting = firstName ? `¡Hola ${firstName}! ` : '¡Hola! ';
@@ -69,8 +68,6 @@ export async function runAgentLoop(
       return { message: literalMessage };
     }
   }
-
-  console.log('[agent DEBUG] short-circuit NO se disparó, continuando al modelo');
 
   const systemPrompt =
     agentType === 'companion'
