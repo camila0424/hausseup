@@ -47,6 +47,24 @@ export async function runAgentLoop(
     console.error('Could not fetch user name:', (err as Error).message);
   }
 
+  // short-circuit: primer mensaje de companion sin memoria previa → texto literal, sin llamar a Claude
+  if (userMessage === '__init__' && agentType === 'companion') {
+    const hasMemory = userMemory && userMemory.trim() !== '' && userMemory.trim() !== 'Sin datos previos.';
+    if (!hasMemory) {
+      const firstName = userName.trim().split(' ')[0] || '';
+      const greeting = firstName ? `¡Hola ${firstName}! ` : '¡Hola! ';
+      const literalMessage =
+        `${greeting}Soy María, tu agente en Hausseup. Antes de nada, gracias por confiar en nosotros ` +
+        `y darle una oportunidad a esta plataforma que estamos construyendo con mucho cariño para la ` +
+        `comunidad latina en España. Estoy aquí para ayudarte a encontrar trabajo digno y armar tu perfil ` +
+        `para que las empresas te encuentren. Lo que me cuentes queda entre nosotras. Cuéntame un poco de ` +
+        `ti: de dónde vienes, cuánto tiempo llevas en España, a qué te has dedicado profesionalmente y ` +
+        `cómo te ves trabajando aquí. Cuéntame con calma, sin formularios.`;
+      await saveConversationTurn(userId, userMessage, literalMessage);
+      return { message: literalMessage };
+    }
+  }
+
   const systemPrompt =
     agentType === 'companion'
       ? buildCompanionPrompt(userMemory, recentHistoryText, userName)
